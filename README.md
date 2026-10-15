@@ -238,9 +238,9 @@ Before using external modules for the first time, allow user-script execution fo
 
 ![Load package button in the pre-filter settings](site/assets/guide/package-filter-en.png)
 
-4. **Add it to the rotation.** Choose “Edit selection”, check the new module, and confirm with “OK”.
+4. **Make it available in quick controls.** Choose “Edit selection”, check the new module, and confirm with “OK”.
 
-![Adding Paper Restoration to rotation candidates](site/assets/guide/package-select-en.png)
+![Adding Paper Restoration to quick controls](site/assets/guide/package-select-en.png)
 
 5. **Switch to it while reading.** Use the corresponding quick icon to select the module, then open Adjust to change its settings.
 
