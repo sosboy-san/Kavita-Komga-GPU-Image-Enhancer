@@ -1,0 +1,8 @@
+*.pem
+*.key
+private-signing*/
+node_modules/
+qa/
+*.crx
+*.zip
+.DS_Store
