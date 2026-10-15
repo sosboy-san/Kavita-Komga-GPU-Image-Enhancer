@@ -1,5 +1,7 @@
 # Kavita & Komga GPU Image Enhancer
 
+[日本語](README.ja.md) | [English](README.en.md)
+
 **ブラウザーの漫画表示を、もっと自由に。もっと美しく。**
 
 Kavita & Komga GPU Image Enhancer（GPUIE）は、Kavita・Komga向けのブラウザー拡張機能です。LoHalo Jr.・NoHalo Jr.などの拡大・縮小方式に、前後のフィルターを組み合わせて、専用コミックビューアのような本格的な画質調整を行えます。サイト本来のレイアウトや読書操作をなるべく維持しながら、漫画の見え方を好みに合わせられます。

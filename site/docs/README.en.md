@@ -1,5 +1,7 @@
 # Kavita & Komga GPU Image Enhancer
 
+[日本語](README.ja.md) | [English](README.en.md)
+
 **More freedom. Better-looking comics in your browser.**
 
 Kavita & Komga GPU Image Enhancer (GPUIE) is a browser extension for Kavita and Komga. Choose resizing methods such as LoHalo Jr. and NoHalo Jr., and combine them with filters before and after resizing, bringing advanced image-quality controls to your browser-based comic reader. It lets you adjust how comics look while keeping the site's layout and reading controls as much as possible.
