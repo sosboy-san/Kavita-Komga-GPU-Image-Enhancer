@@ -1,0 +1,52 @@
+(() => {
+  'use strict';
+  const fragment = `#version 300 es
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+in vec2 v_uv;
+uniform sampler2D image;
+layout(location=0) out vec4 outColor;
+void main() {
+  outColor = texture(image, v_uv);
+}`;
+
+  const descriptor = {
+    moduleApiVersion: 1,
+    executionApiVersion: 1,
+    id: 'sosboy-san.copy-filter',
+    name: 'Copy Filter',
+    version: '1.0.1',
+    implementationRevision: 'copy-1.0.1',
+    kind: 'filter',
+    supportedStages: ['pre', 'post'],
+    parameters: [],
+    author: 'sosboy-san',
+    license: 'MIT',
+    readme: '前・後フィルターの接続確認用です。GPUコピーのみで、画像加工やパラメータはありません。1.0.0と1.0.1は同じ画質です。別版追加と更新の確認に使用してください。',
+    description: '画像を変更せずGPUでコピーする検証用フィルター。',
+    create(host) {
+      let program = null;
+      let disposed = false;
+      return {
+        prepare() {
+          if (disposed) throw Error('Disposed');
+          program = host.createProgram({ fragment, samplers: ['image'] });
+          return { supported: true };
+        },
+        execute({ input, output }) {
+          if (disposed || !program) throw Error('Not prepared');
+          host.drawPass({ program, inputs: { image: input }, output });
+          return { kind: 'written' };
+        },
+        dispose() {
+          if (disposed) return;
+          disposed = true;
+          if (program) host.releaseProgram(program);
+          program = null;
+        },
+      };
+    },
+  };
+  (globalThis.__KKGR_MODULES__ ??= []).push(descriptor);
+})();

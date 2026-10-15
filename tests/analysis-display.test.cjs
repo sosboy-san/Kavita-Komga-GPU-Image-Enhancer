@@ -1,0 +1,13 @@
+const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('node:assert/strict');const c={TextEncoder,console};vm.createContext(c);const root=path.resolve(__dirname,'../extension');for(const f of ['ui/parameter-schema.js','ui/package-metadata.js','ui/analysis-contract.js','ui/module-contract.js'])vm.runInContext(fs.readFileSync(path.join(root,f),'utf8'),c);
+vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../tests/fixtures/modules/Analysis-Display-Sample-1.0.0.txt'),'utf8'),c);
+vm.runInContext(`const d=__KKGR_MODULES__.at(-1),P=__KKGR_PARAMETERS__,M=__KKGR_MODULE_CONTRACT__;globalThis.metadata=M.validate(d);globalThis.autoValues=P.values(metadata.parameters);globalThis.manualVisible=P.visible(metadata.parameters[1],autoValues);globalThis.autoVisible=P.visible(metadata.analysisDisplay[0],autoValues);globalThis.colorValues=P.displayColors(metadata.analysisDisplay,{data:{adoptedPaperColor:'#abcdef'}});`,c);
+assert.equal(c.manualVisible,false);assert.equal(c.autoVisible,true);assert.equal(c.autoValues.paperColor,'#DCC68F');assert.equal(c.colorValues[0],'#ABCDEF');
+assert.throws(()=>vm.runInContext("M.validate({...d,requiresFeatures:['color-suggestions','analysis-display']})",c),/visible-when/);
+assert.throws(()=>vm.runInContext("M.validate({...d,requiresFeatures:['color-suggestions','visible-when']})",c),/analysis-display/);
+assert.throws(()=>vm.runInContext("P.schema([{...d.parameters[0],visibleWhen:{key:'absent',equals:'auto'}}])",c),/unknown/);
+assert.throws(()=>vm.runInContext("P.schema([{...d.parameters[0],visibleWhen:{key:'paperMode',equals:true}}])",c),/Invalid parameter/);
+assert.throws(()=>vm.runInContext("M.validate({...d,analysisDisplay:[{...d.analysisDisplay[0],analysisPath:'data.paperCandidates'}]})",c),/string/);
+assert.throws(()=>vm.runInContext("M.validate({...d,analysisDisplay:Array(9).fill(d.analysisDisplay[0])})",c),/limit/);
+assert.throws(()=>vm.runInContext("M.validate({...d,analysisDisplay:[{...d.analysisDisplay[0],analysisPath:'data.constructor'}]})",c),/Invalid/);
+vm.runInContext("globalThis.invalidColor=P.displayColors(metadata.analysisDisplay,{data:{adoptedPaperColor:'oops'}});globalThis.manualValues=P.values(metadata.parameters,{...autoValues,paperMode:'manual'});",c);assert.equal(c.invalidColor[0],null);assert.equal(c.manualValues.paperColor,'#DCC68F');
+console.log('PASS API 1.2 conditions, scalar/type validation, feature gates, read-only path/color validation, hidden value retention');

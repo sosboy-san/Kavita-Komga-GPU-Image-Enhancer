@@ -1,0 +1,14 @@
+{
+  "source": [
+    1696,
+    2528
+  ],
+  "output": [
+    1073,
+    1600
+  ],
+  "format": "rgba16f",
+  "renderer": "WebKit WebGL",
+  "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+  "devicePixelRatio": 1
+}

@@ -1,0 +1,14 @@
+(()=>{'use strict';
+ const label=(key,fallback)=>({key:'sample.adjustment.'+key,fallback});
+ const parameters=[
+  {key:'integer',type:'integer',label:label('integer','Integer (0–20)'),min:0,max:20,step:1,default:5},
+  {key:'signedInteger',type:'integer',label:label('signedInteger','Signed integer (−20–20)'),min:-20,max:20,step:1,default:0},
+  {key:'decimal',type:'number',label:label('decimal','Decimal (step 0.5)'),min:0,max:20,step:0.5,default:1},
+  {key:'signedDecimal',type:'number',label:label('signedDecimal','Signed decimal (step 0.5)'),min:-20,max:20,step:0.5,default:0},
+  {key:'enabled',type:'boolean',label:label('enabled','ON / OFF'),default:true},
+  {key:'choice',type:'enum',label:label('choice','Choice'),default:'a',options:[{value:'a',label:label('a','Choice A')},{value:'b',label:label('b','Choice B')},{value:'c',label:label('c','Choice C')}]},
+  {key:'color',type:'color',label:label('color','Color'),default:'#604838'}
+ ];
+ const d={moduleApiVersion:1,executionApiVersion:1,kind:'filter',id:'sosboy-san.adjustment-passthrough-sample',name:'Adjustment Passthrough Sample',version:'1.0.0',implementationRevision:'adjustment-passthrough-1',supportedStages:['pre','post'],parameters,author:'sosboy-san',license:'MIT',description:'All five adjustment types, signed values and step normalization; image is always passed through.',readme:'調整GUIの確認用。整数・数値・ON/OFF・選択肢・色の全種類と、負の整数・小数を宣言しています。どの調整値でも画像は常にパススルーし、画像処理用リソースを作成しません。前後の設定は独立しています。',create(){return {prepare(){return {supported:true};},execute(){return {kind:'passthrough'};},dispose(){}};}};
+ (globalThis.__KKGR_MODULES__??=[]).push(d);
+})();

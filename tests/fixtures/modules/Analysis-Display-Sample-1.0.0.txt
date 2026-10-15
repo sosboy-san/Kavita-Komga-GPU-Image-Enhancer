@@ -1,0 +1,14 @@
+/* Public GPU module API 1.2. Read-only automatic color and manual input.
+ * Pass-through connection sample; does not restore or recolor the image.
+ */
+(()=>{'use strict';const L=(key,fallback)=>({key,fallback});
+const parameters=[
+ {key:'paperMode',type:'enum',label:L('sample.paperMode','紙色の決定方法 / Paper color mode'),default:'auto',options:[{value:'auto',label:L('sample.auto','自動 / Automatic')},{value:'manual',label:L('sample.manual','手動 / Manual')}]},
+ {key:'paperColor',type:'color',label:L('sample.paperColor','手動の紙色 / Manual paper color'),default:'#DCC68F',visibleWhen:{key:'paperMode',equals:'manual'},suggestions:{analysisPath:'data.paperCandidates',maxItems:4}}
+];
+const descriptor={moduleApiVersion:1,executionApiVersion:1,requiresFeatures:['color-suggestions','visible-when','analysis-display'],kind:'filter',id:'sosboy-san.analysis-display-sample',name:'自動色表示API接続サンプル / Automatic Color Display Sample',version:'1.0.0',implementationRevision:'readonly-analysis-display1',author:'sosboy-san',description:'自動では解析色を参照表示、手動では保存した色を編集するパススルーサンプル。',supportedStages:['pre','post'],parameters,
+analysisDisplay:[{type:'color',label:L('sample.detected','自動で採用した色 / Automatically selected color'),analysisPath:'data.adoptedPaperColor',visibleWhen:{key:'paperMode',equals:'auto'}}],
+analysis:{revision:'sample-color1',backend:'cpu',target:'original',parameterKeys:[],sample:{regions:[{rect:[0,0,1,1],method:'nearest',width:16,height:16}]},resultSchema:{type:'object',properties:{paperCandidates:{type:'array',maxItems:4,items:{type:'string',maxLength:7}},adoptedPaperColor:{type:'string',maxLength:7}}}},
+create(){return {prepare(){return {supported:true}},analyze({sample}){const p=sample.regions[0].pixels;const color='#'+Array.from(p.slice(0,3),v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();return {data:{paperCandidates:[color,'#FFFFFF'],adoptedPaperColor:color}}},execute(){return {kind:'passthrough'}},dispose(){}};}};
+(globalThis.__KKGR_MODULES__??=[]).push(descriptor);
+})();

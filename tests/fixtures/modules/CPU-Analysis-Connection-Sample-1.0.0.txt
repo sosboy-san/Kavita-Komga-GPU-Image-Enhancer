@@ -1,0 +1,41 @@
+(()=>{'use strict';
+ const fragment=`#version 300 es
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+in vec2 v_uv;
+uniform sampler2D image;
+uniform float amount;
+uniform vec3 tint;
+layout(location=0) out vec4 outColor;
+void main(){
+ vec4 c=texture(image,v_uv);
+ vec3 effect=c.rgb+(vec3(1.0)-c.rgb)*tint;
+ outColor=vec4(mix(c.rgb,effect,amount),c.a);
+}`;
+ const descriptor={
+  moduleApiVersion:1,executionApiVersion:1,kind:'filter',
+  id:'example.cpu-connection',name:'CPU analysis connection sample',version:'1.0.0',
+  implementationRevision:'cpu-connection-1',supportedStages:['pre','post'],
+  analysis:{revision:'rgb-span-1',backend:'cpu',target:'original',parameterKeys:['threshold'],sample:{regions:[{rect:[0,0,1,1],width:128,height:128,method:'nearest'}]},resultSchema:{type:'object',properties:{isColor:{type:'boolean'},score:{type:'integer',min:0,max:255}}}},
+  parameters:[
+   {key:'threshold',type:'integer',label:{key:'example.threshold',fallback:'Color threshold'},min:0,max:255,step:1,default:12},
+   {key:'amount',type:'number',label:{key:'example.amount',fallback:'Strength'},min:0,max:1,step:0.05,default:0.5},
+   {key:'ink',type:'color',label:{key:'example.ink',fallback:'Ink color'},default:'#604838'},
+  ],
+  create(host){let program=null;return {
+   prepare(){program=host.createProgram({fragment,samplers:['image'],uniforms:{amount:{type:'float'},tint:{type:'vec3'}}});return {supported:true};},
+   analyze({sample,parameters:p,signal}){let score=0;for(const region of sample.regions){const a=region.pixels;for(let i=0;i<a.length;i+=4){if(signal.aborted)throw Error("Analysis cancelled");if(a[i+3]===0)continue;score=Math.max(score,Math.max(a[i],a[i+1],a[i+2])-Math.min(a[i],a[i+1],a[i+2]));}}return {data:{isColor:score>p.threshold,score}};},
+   execute({input,output,parameters:p,analysis}){
+    if(analysis.data.isColor)return {kind:"passthrough"};
+    if(p.amount===0)return {kind:'passthrough'};
+    host.drawPass({program,inputs:{image:input},output,uniforms:{amount:p.amount,tint:host.colorToRgb(p.ink)}});
+    return {kind:'written'};
+   },
+   dispose(){if(program)host.releaseProgram(program);program=null;},
+  };},
+ };
+ const labels=Object.fromEntries(descriptor.parameters.flatMap(p=>[p.label,...(p.options||[]).map(o=>o.label)]).map(l=>[l.key,l.key.split('.').at(-1).replace(/([A-Z])/g,' $1').replace(/[_-]/g,' ')]));
+ descriptor.translations={en:{name:descriptor.name,description:'Development sample for API parameter and analysis verification.',readme:'This sample verifies the public module contract. Use it for development only.',labels}};
+ (globalThis.__KKGR_MODULES__??=[]).push(descriptor);
+})();

@@ -1,0 +1,19 @@
+/* Public GPU module API 1.3. Single-file normal/developer UI sample.
+ * Image processing is pass-through. Hidden values remain execution values.
+ */
+(()=>{'use strict';const L=(key,fallback)=>({key,fallback});
+const descriptor={moduleApiVersion:1,executionApiVersion:1,requiresFeatures:['ui-audience','visible-when','analysis-display'],kind:'filter',id:'sosboy-san.ui-audience-sample',name:'通常・開発者表示サンプル / UI Audience Sample',version:'1.0.0',implementationRevision:'ui-audience-sample1',author:'sosboy-san',description:'1ファイルで通常用と検証用の項目を切り替えるパススルーサンプル。',supportedStages:['pre','post'],
+parameters:[
+ {key:'enabled',type:'boolean',label:L('audience.enabled','共通項目 / Common setting'),default:true},
+ {key:'normalSetting',type:'boolean',label:L('audience.normal','通常モード専用 / Normal mode only'),default:true,audience:'normal'},
+ {key:'debugStrength',type:'number',label:L('audience.debug','検証用の強さ / Developer strength'),default:0.5,min:0,max:1,step:0.1,audience:'developer',visibleWhen:{key:'enabled',equals:true}}
+],
+analysisDisplay:[
+ {type:'color',label:L('audience.normalColor','通常用の解析表示 / Normal analysis color'),analysisPath:'data.color',audience:'normal'},
+ {type:'color',label:L('audience.debugColor','検証用の解析表示 / Developer analysis color'),analysisPath:'data.color',audience:'developer'},
+ {type:'color',label:L('audience.commonColor','共通の解析表示 / Common analysis color'),analysisPath:'data.color'}
+],
+analysis:{revision:'audience-color1',backend:'cpu',target:'original',parameterKeys:[],sample:{regions:[{rect:[0,0,1,1],method:'nearest',width:16,height:16}]},resultSchema:{type:'object',properties:{color:{type:'string',maxLength:7}}}},
+create(){return {prepare(){return {supported:true}},analyze({sample}){const p=sample.regions[0].pixels;return {data:{color:'#'+Array.from(p.slice(0,3),v=>v.toString(16).padStart(2,'0')).join('').toUpperCase()}}},execute(){return {kind:'passthrough'}},dispose(){}};}};
+(globalThis.__KKGR_MODULES__??=[]).push(descriptor);
+})();

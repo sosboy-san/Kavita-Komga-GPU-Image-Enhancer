@@ -1,0 +1,69 @@
+// Derived from Crisp Images by Igkor Bevzenidis. MIT.
+// https://github.com/Ikkoru/crisp-images
+// API 1 adaptation: sosboy-san. Existing Lanczos formula is preserved.
+(()=>{'use strict';
+const fragment=`#version 300 es
+precision highp float;
+// Fragment shaders default unqualified integers to mediump. Lanczos converts
+// its tap index back to float for half-pixel sampling; keeping that index highp
+// prevents mobile GPUs from losing the .5 phase around the 1024px boundary.
+precision highp int;
+precision highp sampler2D;
+uniform sampler2D u_tex;
+uniform vec2  u_srcSize;
+uniform vec2  u_dstSize;
+uniform vec2  u_dir;
+uniform float u_scale;
+in  vec2 v_uv;
+layout(location=0) out vec4 outColor;
+
+const float PI = 3.141592653589793;
+
+float sinc(float x) {
+  if (abs(x) < 1e-6) return 1.0;
+  float p = PI * x;
+  return sin(p) / p;
+}
+
+float lanczos3(float x) {
+  x = abs(x);
+  if (x >= 3.0) return 0.0;
+  return sinc(x) * sinc(x / 3.0);
+}
+
+void main() {
+  vec2 dstPx = v_uv * u_dstSize;
+  float along = dot(dstPx, u_dir);
+  vec2  perp  = dstPx - along * u_dir;
+
+  float srcPos = along / u_scale;
+
+  float filterScale = max(1.0, 1.0 / u_scale);
+  float support = 3.0 * filterScale;
+
+  int jStart = int(floor(srcPos - support - 0.5));
+  int jEnd   = int(ceil (srcPos + support - 0.5));
+
+  vec4  acc  = vec4(0.0);
+  float wsum = 0.0;
+  for (int j = jStart; j <= jEnd; ++j) {
+    float w = lanczos3((srcPos - (float(j) + 0.5)) / filterScale);
+    if (w == 0.0) continue;
+    vec2 srcPx = perp + (float(j) + 0.5) * u_dir;
+    acc  += w * texture(u_tex, srcPx / u_srcSize);
+    wsum += w;
+  }
+  outColor = wsum > 0.0 ? acc / wsum : vec4(0.0);
+}`;
+const descriptor=Object.freeze({moduleApiVersion:1,executionApiVersion:1,kind:'renderer',
+id:'lanczos3',name:'Lanczos3',version:'2.0.0',implementationRevision:'public-api1-a1',
+author:'sosboy-san',license:'MIT',source:'https://github.com/Ikkoru/crisp-images',parameters:[],
+create(host){let program=null,disposed=false;return {
+prepare(){if(disposed)throw Error('Disposed');program=host.createProgram({fragment,samplers:['u_tex'],uniforms:{u_srcSize:{type:'vec2'},u_dstSize:{type:'vec2'},u_dir:{type:'vec2'},u_scale:{type:'float'}}});return {supported:true};},
+execute({input,output}){if(disposed||!program)throw Error('Not prepared');const middle=host.acquireScratch({width:output.width,height:input.height});
+const pass=(src,dst,dir,scale)=>host.drawPass({program,inputs:{u_tex:src},output:dst,uniforms:{u_srcSize:[src.width,src.height],u_dstSize:[dst.width,dst.height],u_dir:dir,u_scale:scale}});
+try{pass(input,middle,[1,0],output.width/input.width);pass(middle,output,[0,1],output.height/input.height);return {kind:'written'};}finally{host.releaseScratch(middle);}},
+dispose(){if(disposed)return;disposed=true;if(program)host.releaseProgram(program);program=null;}
+};}});
+(globalThis.__KKGR_MODULES__??=[]).push(descriptor);
+})();

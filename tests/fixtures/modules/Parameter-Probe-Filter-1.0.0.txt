@@ -1,0 +1,20 @@
+(()=>{'use strict';
+ const label=(key,fallback)=>({key,fallback});
+ const parameters=[
+ {key:'strength',label:label('parameter.probe.strength','Strength'),type:'number',min:0,max:1,step:0.05,default:1},
+ {key:'radius',label:label('parameter.probe.radius','Amount scale (1–20)'),type:'integer',min:1,max:20,step:1,default:3},
+ {key:'enabled',label:label('parameter.probe.enabled','Apply effect'),type:'boolean',default:true},
+ {key:'mode',label:label('parameter.probe.mode','Effect'),type:'enum',default:'tint',options:[{value:'tint',label:label('parameter.probe.tint','Tint dark areas')},{value:'invert',label:label('parameter.probe.invert','Invert')},{value:'copy',label:label('parameter.probe.copy','Pass through')}]},
+ {key:'color',label:label('parameter.probe.color','Line color'),type:'color',default:'#604838'}];
+ const fragment=`#version 300 es
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+in vec2 v_uv;uniform sampler2D image;uniform float amount;uniform vec3 tint;uniform int mode;
+layout(location=0) out vec4 outColor;
+void main(){vec4 c=texture(image,v_uv);vec3 effect=mode==1?vec3(1.0)-c.rgb:c.rgb+(vec3(1.0)-c.rgb)*tint;outColor=vec4(mix(c.rgb,effect,amount),c.a);}`;
+ const d={moduleApiVersion:1,executionApiVersion:1,kind:'filter',id:'sosboy-san.parameter-probe',name:'Parameter Probe',version:'1.0.0',implementationRevision:'parameter-probe-1',supportedStages:['pre','post'],parameters,author:'sosboy-san',license:'MIT',description:'Five parameter types and separate pre/post settings test.',readme:'調整GUIと値の受け渡しの検証専用。USMではありません。強さ×調整量/20を効果量として色付けまたは反転します。OFFか素通しでは加工しません。前後は別設定です。画像の透明度を保持します。',create(host){let program;return {prepare(){program=host.createProgram({fragment,samplers:['image'],uniforms:{amount:{type:'float'},tint:{type:'vec3'},mode:{type:'int'}}});return {supported:true};},execute({input,output,parameters:p}){if(!p.enabled||p.mode==='copy')return {kind:'passthrough'};host.drawPass({program,inputs:{image:input},output,uniforms:{amount:p.strength*p.radius/20,tint:host.colorToRgb(p.color),mode:p.mode==='invert'?1:0}});return {kind:'written'};},dispose(){if(program)host.releaseProgram(program);program=null;}};}};
+ const labels=Object.fromEntries(d.parameters.flatMap(p=>[p.label,...(p.options||[]).map(o=>o.label)]).map(l=>[l.key,l.key.split('.').at(-1).replace(/([A-Z])/g,' $1').replace(/[_-]/g,' ')]));
+ d.translations={en:{name:d.name,description:'Development sample for API parameter and analysis verification.',readme:'This sample verifies the public module contract. Use it for development only.',labels}};
+ (globalThis.__KKGR_MODULES__??=[]).push(d);
+})();

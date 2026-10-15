@@ -1,0 +1,358 @@
+/* GPU Image Enhancer Public Module API 1.2 — Paper Restoration v0.4.6 normal-use build (release number provisional)
+ * Pre-filter with edge-based paper-color suggestions.
+ * All RGB math is performed in sRGB numerical space; straight alpha is retained.
+ * Only host-provided CPU analysis samples; no raw WebGL, GPU readback, or DOM.
+ */
+(() => {
+  'use strict';
+  const L = (key, fallback) => ({key, fallback});
+  const fragment = `#version 300 es
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+in vec2 v_uv;
+uniform sampler2D image;
+uniform vec3 paperRgb;
+uniform float strength;
+uniform float tolerance;
+uniform float inkProtection;
+uniform float colorProtection;
+uniform float spatialAmount;
+uniform int paperFieldMode;
+uniform vec3 edgePaper[4];
+uniform vec3 localPaper[9];
+layout(location=0) out vec4 outColor;
+
+float smooth01(float lo, float hi, float x) {
+  float t = clamp((x - lo) / max(hi - lo, 0.00001), 0.0, 1.0);
+  return t * t * (3.0 - 2.0 * t);
+}
+void main() {
+  vec4 src = texture(image, v_uv);
+  vec3 c = clamp(src.rgb, 0.0, 1.0);
+  // Bilinear interpolation over a 3x3 low-frequency paper-color field.
+  // Grid values are derived from original-image CPU samples, not printed artwork.
+  vec2 g = clamp(v_uv, vec2(0.0), vec2(1.0)) * 2.0;
+  ivec2 cell = min(ivec2(floor(g)), ivec2(1));
+  vec2 f = g - vec2(cell);
+  f = f * f * (3.0 - 2.0 * f);
+  int i = cell.y * 3 + cell.x;
+  vec3 upper = mix(localPaper[i], localPaper[i+1], f.x);
+  vec3 lower = mix(localPaper[i+3], localPaper[i+4], f.x);
+  vec3 field = mix(upper, lower, f.y);
+  // Standard edge field: four independently estimated 7% border strips.
+  // Blend towards the closest border, smoothly fading by 20% image depth.
+  vec2 uv = clamp(v_uv, vec2(0.0), vec2(1.0));
+  vec4 edgeWeight = vec4(
+    1.0 - smooth01(0.0, 0.20, uv.y),
+    1.0 - smooth01(0.0, 0.20, 1.0 - uv.y),
+    1.0 - smooth01(0.0, 0.20, uv.x),
+    1.0 - smooth01(0.0, 0.20, 1.0 - uv.x));
+  float weightSum = edgeWeight.x + edgeWeight.y + edgeWeight.z + edgeWeight.w;
+  vec3 edgeField = weightSum > 0.00001 ?
+    (edgePaper[0] * edgeWeight.x + edgePaper[1] * edgeWeight.y +
+     edgePaper[2] * edgeWeight.z + edgePaper[3] * edgeWeight.w) / weightSum : field;
+  float edgeMix = paperFieldMode == 1 ? clamp(weightSum, 0.0, 1.0) : 0.0;
+  vec3 selectedField = mix(field, edgeField, edgeMix);
+  vec3 paper = clamp(mix(paperRgb, selectedField, spatialAmount), vec3(0.05), vec3(1.0));
+  float y = dot(c, vec3(0.2126, 0.7152, 0.0722));
+  // Relative RGB offsets distinguish the paper tint from many printed inks.
+  vec2 chroma = vec2(c.r - c.g, c.b - c.g);
+  vec2 key = vec2(paper.r - paper.g, paper.b - paper.g);
+  float chromaDistance = length(chroma - key);
+  float colorMatch = 1.0 - smooth01(tolerance * 0.35, tolerance, chromaDistance);
+  // Only lift relatively bright paper; dark text and linework stay unchanged.
+  float lightMask = smooth01(inkProtection, min(0.98, inkProtection + 0.35), y);
+  float peak = max(c.r, max(c.g, c.b));
+  float valley = min(c.r, min(c.g, c.b));
+  float saturation = (peak - valley) / max(peak, 0.00001);
+  // Keep saturated print colors. Paper with moderate tint is still eligible.
+  float vividMask = 1.0 - colorProtection * smooth01(0.30, 0.75, saturation);
+  float mask = clamp(strength * colorMatch * lightMask * vividMask, 0.0, 1.0);
+  // Channel-specific gain makes the selected paper color neutral white.
+  // Clamp to avoid unbounded amplification in 16F processing.
+  vec3 corrected = min(c / paper, vec3(1.0));
+  vec3 rgb = mix(src.rgb, corrected, mask);
+  outColor = vec4(rgb, src.a);
+}`;
+  const descriptor = {
+    moduleApiVersion: 1,
+    executionApiVersion: 1,
+    kind: 'filter',
+    id: 'sosboy-san.paper-restoration',
+    name: '紙地復元 / Paper Restoration',
+    version: '0.4.6',
+    author: 'sosboy-san',
+    implementationRevision: 'paper-key-selective-gain-v1-spatial-grid-v1-edge-strips-v1-normal-ui-v1',
+    supportedStages: ['pre'],
+    requiresFeatures: ['color-suggestions', 'visible-when', 'analysis-display'],
+    description: '黄ばんだ紙や紙色ムラを、印刷色や輪郭線をなるべく残しながら補正する前処理フィルター。',
+    readme: '古い漫画やスキャン画像の黄ばんだ紙を、印刷色や輪郭線をなるべく残しながら白く補正します。紙色は自動推定でき、手動指定も可能です。外周4辺を優先し、中央へ滑らかに3×3の紙色推定へ切り替えることで、場所による色ムラにも対応します。\n\n「紙色の復元度」は補正の強さです。100%で補正を最大限適用し、50%では元画像の色味を一部残し、0%では元画像のままです。100%でも全画素を白くするわけではありません。\n「紙色ムラへの追従度」は場所ごとの推定紙色の反映量です。100%で全面的に採用し、0%では全体の推定紙色だけを使います。手動時は指定した紙色を基準にします。復元度とは役割が異なります。\n「鮮やかな色の保護」を上げると印刷色を守りやすくなりますが、強い黄ばみも残る場合があります。0%でも紙色判定と暗部保護は働きます。\n「紙色の判定範囲」を広げると補正対象が増えますが、印刷色にも影響する場合があります。「暗部保護」は文字や輪郭線などを守る明度しきい値です。\n\n初期値：紙色は自動、復元度100%、判定範囲0.20、暗部保護0.30、鮮やかな色の保護50%、ムラへの追従度100%。手動紙色の初期値は#DCC68Fです。\n紙色推定は万能ではなく、紙色に近い印刷色も補正される場合があります。作品によっては色の保護を上げ、黄ばみの完全除去より自然な見た目を優先してください。元画像ファイルは変更しません。\n\n紙地復元 / Paper Restoration\n作者：sosboy-san\nバージョン：0.4.6\nパッケージID：sosboy-san.paper-restoration\nGPU Image Enhancer Public Module API 1.2 / Pre-filter\nCPUサンプルで紙色を推定し、WebGL2 / GLSL ES 3.00によりGPUで描画します。補正はsRGB数値空間で行います。',
+    parameters: [
+      {key:'paperMode', type:'enum', label:L('paper.mode','紙色の決定方法'), default:'auto', options:[
+        {value:'auto',label:L('paper.mode.auto','自動')},
+        {value:'manual',label:L('paper.mode.manual','手動')}
+      ]},
+      {key:'paperColor', type:'color', label:L('paper.color','手動の紙色'), default:'#DCC68F', visibleWhen:{key:'paperMode',equals:'manual'}, suggestions:{analysisPath:'data.paperCandidates', maxItems:4}},
+      {key:'strength', type:'integer', label:L('paper.restorationDegree','紙色の復元度（%）'), min:0, max:100, step:5, default:100},
+      {key:'tolerance', type:'number', label:L('paper.detectionRange','紙色の判定範囲'), min:0.02, max:0.5, step:0.01, default:0.20},
+      {key:'inkProtection', type:'number', label:L('paper.darkProtection','暗部保護'), min:0.05, max:0.65, step:0.05, default:0.30},
+      {key:'colorProtection', type:'integer', label:L('paper.colorProtection','鮮やかな色の保護（%）'), min:0, max:100, step:5, default:50},
+      {key:'spatialAmount', type:'integer', label:L('paper.unevennessFollowing','紙色ムラへの追従度（%）'), min:0, max:100, step:5, default:100},
+
+    ],
+    analysisDisplay: [{
+      type:'color',
+      label:L('paper.detected','自動で採用した紙色'),
+      analysisPath:'data.adoptedPaperColor',
+      visibleWhen:{key:'paperMode',equals:'auto'}
+    }],
+    analysis: {
+      revision: 'paper-edge-candidates-v2-auto-adopt-v1-spatial-grid-v1-edge-strips-v1-normal-v1',
+      backend: 'cpu',
+      target: 'original',
+      parameterKeys: [],
+      sample: {regions: [
+        {rect:[0,0,1,0.07],method:'nearest',width:192,height:12},
+        {rect:[0,0.93,1,0.07],method:'nearest',width:192,height:12},
+        {rect:[0,0.07,0.07,0.86],method:'nearest',width:12,height:192},
+        {rect:[0.93,0.07,0.07,0.86],method:'nearest',width:12,height:192},
+        {rect:[0.000000,0.000000,0.333333,0.333333],method:'nearest',width:64,height:64},
+        {rect:[0.333333,0.000000,0.333333,0.333333],method:'nearest',width:64,height:64},
+        {rect:[0.666667,0.000000,0.333333,0.333333],method:'nearest',width:64,height:64},
+        {rect:[0.000000,0.333333,0.333333,0.333333],method:'nearest',width:64,height:64},
+        {rect:[0.333333,0.333333,0.333333,0.333333],method:'nearest',width:64,height:64},
+        {rect:[0.666667,0.333333,0.333333,0.333333],method:'nearest',width:64,height:64},
+        {rect:[0.000000,0.666667,0.333333,0.333333],method:'nearest',width:64,height:64},
+        {rect:[0.333333,0.666667,0.333333,0.333333],method:'nearest',width:64,height:64},
+        {rect:[0.666667,0.666667,0.333333,0.333333],method:'nearest',width:64,height:64}
+      ]},
+      resultSchema: {type:'object',properties:{
+        paperCandidates:{type:'array',maxItems:4,items:{type:'string',maxLength:7}},
+        adoptedPaperColor:{type:'string',maxLength:7},
+        localPaper:{type:'array',maxItems:9,items:{type:'string',maxLength:7}},
+        edgePaper:{type:'array',maxItems:4,items:{type:'string',maxLength:7}},
+
+      }}
+    },
+    create(host) {
+      let program = null;
+      return {
+        prepare() {
+          program = host.createProgram({
+            fragment,
+            samplers:['image'],
+            uniforms:{
+              paperRgb:{type:'vec3'},
+              strength:{type:'float'},
+              tolerance:{type:'float'},
+              inkProtection:{type:'float'},
+              colorProtection:{type:'float'},
+              spatialAmount:{type:'float'},
+              paperFieldMode:{type:'int'},
+              edgePaper:{type:'vec3',length:4},
+              localPaper:{type:'vec3',length:9}
+            }
+          });
+          return {supported:true};
+        },
+        analyze({sample, signal}) {
+          // Small, deterministic edge sample. No mutable global state or DOM access.
+          const samples = [];
+          for (const region of sample.regions.slice(0,4)) {
+            const pix = region.pixels;
+            for (let i = 0; i < pix.length; i += 4) {
+              if ((i & 8191) === 0 && signal?.aborted) throw new Error('Analysis cancelled');
+              if (pix[i+3] < 240) continue;
+              const r=pix[i], g=pix[i+1], b=pix[i+2];
+              const hi=Math.max(r,g,b), lo=Math.min(r,g,b);
+              const lum=(0.2126*r+0.7152*g+0.0722*b)/255;
+              const chroma=(hi-lo)/255;
+              // Reject dark linework and saturated colored illustrations.
+              if (lum < 0.56 || chroma > 0.42) continue;
+              // Paper is generally light and fairly low-chroma; do not force warm-only.
+              samples.push({r,g,b,lum,chroma});
+            }
+          }
+          if (samples.length < 24) {
+            // Do not substitute the saved manual color for a missing auto result.
+            // Analysis failure follows the host's existing original-image fallback.
+            throw new Error('Insufficient paper-like pixels for automatic estimation');
+          }
+          // Use observed edge pixels only. Cluster into coarse sRGB bins to
+          // suppress isolated printing artifacts, then choose perceptually
+          // separated medoids (actual sampled colors), never synthetic colors.
+          const bins = new Map();
+          for (const x of samples) {
+            const key = `${x.r>>4},${x.g>>4},${x.b>>4}`;
+            let bin = bins.get(key);
+            if (!bin) {bin={n:0,r:0,g:0,b:0,points:[]};bins.set(key,bin);}
+            bin.n++; bin.r+=x.r;bin.g+=x.g;bin.b+=x.b;
+            // Keep a small deterministic set of observed representatives.
+            if (bin.points.length < 16) bin.points.push(x);
+          }
+          const linear = v => {v/=255;return v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4;};
+          const lab = (r,g,b) => {
+            r=linear(r);g=linear(g);b=linear(b);
+            const l=Math.cbrt(0.4122214708*r+0.5363325363*g+0.0514459929*b);
+            const m=Math.cbrt(0.2119034982*r+0.6806995451*g+0.1073969566*b);
+            const t=Math.cbrt(0.0883024619*r+0.2817188376*g+0.6299787005*b);
+            return [0.2104542553*l+0.793617785*m-0.0040720468*t,
+              1.9779984951*l-2.428592205*m+0.4505937099*t,
+              0.0259040371*l+0.7827717662*m-0.808675766*t];
+          };
+          const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+          const minBinCount=Math.max(5,Math.ceil(samples.length*0.002));
+          const clusters=[...bins.values()].filter(x=>x.n>=minBinCount)
+            .map(x=>{
+              const center=[x.r/x.n,x.g/x.n,x.b/x.n];
+              const centerLab=lab(...center);
+              const point=x.points.reduce((best,p)=>{
+                const d=distance(lab(p.r,p.g,p.b),centerLab);
+                return !best||d<best.d?{p,d}:best;
+              },null).p;
+              return {n:x.n,hex:'#'+[point.r,point.g,point.b]
+                .map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase(),
+                lab:lab(point.r,point.g,point.b),lum:point.lum};
+            });
+          // The most frequent bin is the representative paper color.
+          clusters.sort((a,b)=>b.n-a.n || b.lum-a.lum || a.hex.localeCompare(b.hex));
+          const chosen=[];
+          if(clusters.length) chosen.push(clusters[0]);
+          // A meaningful visual difference matters more than filling four slots.
+          // Farthest-first selection favors both dark yellowing and pale paper,
+          // while requiring a minimum prevalence for every offered swatch.
+          const minDelta=0.045;
+          while(chosen.length<4){
+            let best=null, bestScore=-1;
+            for(const c of clusters){
+              if(chosen.includes(c))continue;
+              const separation=Math.min(...chosen.map(x=>distance(c.lab,x.lab)));
+              if(separation<minDelta)continue;
+              const score=separation*(0.8+0.2*Math.min(1,c.n/(minBinCount*4)));
+              if(score>bestScore){best=c;bestScore=score;}
+            }
+            if(!best)break;
+            chosen.push(best);
+          }
+          const candidates=chosen.map(x=>x.hex);
+          if (!candidates.length) {
+            // Coarse bins can be too sparse on highly varied scans. Use an
+            // observed eligible pixel nearest the mean, not an invented color.
+            const mean=samples.reduce((a,x)=>[a[0]+x.r,a[1]+x.g,a[2]+x.b],[0,0,0]).map(v=>v/samples.length);
+            const observed=samples.reduce((best,x)=>{
+              const d=(x.r-mean[0])**2+(x.g-mean[1])**2+(x.b-mean[2])**2;
+              return !best||d<best.d?{x,d}:best;
+            },null).x;
+            candidates.push('#'+[observed.r,observed.g,observed.b].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase());
+          }
+          // Each of the 9 spatial cells estimates its own paper color. A cell
+          // without convincing paper pixels inherits the global estimate.
+          // The spatial field is restricted to small differences from global
+          // to prevent artwork or black fills from driving local correction.
+          const base = candidates[0].match(/[0-9A-F]{2}/g).map(x=>parseInt(x,16));
+          const toHex = rgb => '#'+rgb.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('').toUpperCase();
+          const localPaper = sample.regions.slice(4,13).map(region=>{
+            const pix=region.pixels;
+            const eligible=[];
+            for(let i=0;i<pix.length;i+=4){
+              if ((i&8191)===0 && signal?.aborted) throw new Error('Analysis cancelled');
+              if(pix[i+3]<240)continue;
+              const r=pix[i],g=pix[i+1],b=pix[i+2];
+              const hi=Math.max(r,g,b),lo=Math.min(r,g,b);
+              const lum=(.2126*r+.7152*g+.0722*b)/255;
+              if(lum<.56)continue;
+              if((hi-lo)/255>.42)continue;
+              const cd=Math.hypot((r-g)-(base[0]-base[1]),(b-g)-(base[2]-base[1]));
+              if(cd>40)continue;
+              eligible.push([r,g,b]);
+            }
+            const minimum=Math.max(48,Math.floor(pix.length/4*.08));
+            if(eligible.length<minimum)return candidates[0];
+            const med=[0,1,2].map(k=>{
+              const values=eligible.map(c=>c[k]).sort((a,b)=>a-b);
+              return values[Math.floor(values.length/2)];
+            });
+            const bounded=med.map((v,k)=>Math.max(base[k]-36,Math.min(base[k]+36,v)));
+            return toHex(bounded);
+          });
+          // Each border is estimated independently from the same original 7% samples.
+          // Use the global paper chroma to avoid treating bright artwork as paper.
+          const edgePaper=sample.regions.slice(0,4).map(region=>{
+            const pix=region.pixels;
+            const eligible=[];
+            for(let i=0;i<pix.length;i+=4){
+              if ((i&8191)===0 && signal?.aborted) throw new Error('Analysis cancelled');
+              if(pix[i+3]<240)continue;
+              const r=pix[i],g=pix[i+1],b=pix[i+2];
+              const hi=Math.max(r,g,b),lo=Math.min(r,g,b);
+              const lum=(.2126*r+.7152*g+.0722*b)/255;
+              if(lum<.56 || (hi-lo)/255>.42)continue;
+              const cd=Math.hypot((r-g)-(base[0]-base[1]),(b-g)-(base[2]-base[1]));
+              if(cd>40)continue;
+              eligible.push([r,g,b]);
+            }
+            const minimum=Math.max(24,Math.floor(pix.length/4*.08));
+            const fallback=eligible.length<minimum;
+            const med=fallback?base:[0,1,2].map(k=>{
+              const values=eligible.map(c=>c[k]).sort((a,b)=>a-b);
+              return values[Math.floor(values.length/2)];
+            });
+            const bounded=med.map((v,k)=>Math.max(base[k]-36,Math.min(base[k]+36,v)));
+            const estimatedColor=toHex(bounded);
+            return estimatedColor;
+          });
+          return {data:{paperCandidates:candidates,adoptedPaperColor:candidates[0],localPaper,edgePaper}};
+        },
+        execute({input, output, parameters:p, analysis}) {
+          if (p.strength <= 0) return {kind:'passthrough'};
+          const selectedColor = p.paperMode === 'auto'
+            ? analysis?.data?.adoptedPaperColor
+            : p.paperColor;
+          if (typeof selectedColor !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(selectedColor)) {
+            throw new Error('Automatic paper color is unavailable');
+          }
+          const baseRgb=host.colorToRgb(analysis?.data?.adoptedPaperColor || selectedColor);
+          const grid=(analysis?.data?.localPaper?.length===9 ? analysis.data.localPaper : Array(9).fill(selectedColor))
+            .flatMap(hex=>{
+              const rgb=host.colorToRgb(hex);
+              // In manual mode preserve the local variation but anchor it to
+              // the user-selected base color, without changing the saved value.
+              const manual=host.colorToRgb(selectedColor);
+              return p.paperMode==='auto'?rgb:rgb.map((v,i)=>Math.max(.05,Math.min(1,manual[i]+v-baseRgb[i])));
+            });
+          const edgeGrid=(analysis?.data?.edgePaper?.length===4 ? analysis.data.edgePaper : Array(4).fill(selectedColor))
+            .flatMap(hex=>{
+              const rgb=host.colorToRgb(hex);
+              const manual=host.colorToRgb(selectedColor);
+              return p.paperMode==='auto'?rgb:rgb.map((v,i)=>Math.max(.05,Math.min(1,manual[i]+v-baseRgb[i])));
+            });
+          host.drawPass({
+            program,
+            inputs:{image:input},
+            output,
+            uniforms:{
+              paperRgb:host.colorToRgb(selectedColor),
+              strength:p.strength / 100,
+              tolerance:p.tolerance,
+              inkProtection:p.inkProtection,
+              colorProtection:p.colorProtection / 100,
+              spatialAmount:p.spatialAmount / 100,
+              paperFieldMode:1,
+              edgePaper:edgeGrid,
+              localPaper:grid
+            }
+          });
+          return {kind:'written'};
+        },
+        dispose() {
+          if (program !== null) {
+            host.releaseProgram(program);
+            program = null;
+          }
+        }
+      };
+    }
+  };
+  (globalThis.__KKGR_MODULES__ ??= []).push(descriptor);
+})();

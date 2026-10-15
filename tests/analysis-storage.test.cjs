@@ -1,0 +1,13 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const prefix=fs.readFileSync(__dirname+'/dev2-sites.test.cjs','utf8').split('(async()=>{')[0],box={require,__dirname,console,URL,URLSearchParams,TextEncoder,setTimeout,clearTimeout,setImmediate};vm.createContext(box);vm.runInContext(prefix+';globalThis.harness=harness',box);
+(async()=>{const h=await box.harness(),meta={};vm.createContext(meta);
+ for(const file of ['parameter-schema.js','package-metadata.js','analysis-contract.js','module-contract.js'])vm.runInContext(fs.readFileSync(__dirname+'/../extension/ui/'+file,'utf8'),meta);
+ const code=fs.readFileSync(__dirname+'/../tests/fixtures/modules/CPU-Analysis-Connection-Sample-1.0.0.txt','utf8');vm.runInContext(code,meta);const d=meta.__KKGR_MODULE_CONTRACT__.validate(meta.__KKGR_MODULES__[0]);
+ assert.equal(d.analysis.parameterKeys[0],'threshold');h.ctx.serializedMetadata=JSON.stringify(d);const workerMetadata=vm.runInContext('JSON.parse(serializedMetadata)',h.ctx);const added=await h.send({type:'ADD_PACKAGE',metadata:workerMetadata,code});assert(added.ok,added.error);
+ const saved=(await h.send({type:'PACKAGE_STATE'})).config.filterCatalog.find(p=>p.id===d.id);
+ assert(saved,'Registered sample');assert.equal(saved.analysis.revision,'rgb-span-1');
+ assert(!(await h.send({type:'SET_FILTER_CANDIDATES',filterCandidates:{pre:[d.id],post:[d.id]}})).error);
+ assert(!(await h.send({type:'SET_FILTER',stage:'pre',filterId:d.id})).error);
+ assert(!(await h.send({type:'SET_FILTER_PARAMETERS',stage:'pre',filterId:d.id,values:{threshold:20}})).error);
+ console.log('PASS complete CPU sample descriptor registration, persisted analysis metadata and adjustable threshold');
+})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -1,0 +1,13 @@
+/* Public GPU module API 1.1: fixed and original-image color suggestions.
+ * Passes the image through. Candidate selection does not enable processing.
+ */
+(()=>{'use strict';const L=(key,fallback)=>({key,fallback});
+const parameters=[
+ {key:'paperColor',type:'color',label:L('sample.paperColor','紙の基準色'),default:'#FFFFFF',suggestions:{items:[{value:'#FFF4D6',label:L('sample.warm','暖色の紙')}],analysisPath:'data.paperCandidates',maxItems:4}},
+ {key:'inkColor',type:'color',label:L('sample.inkColor','線の色'),default:'#28211D',suggestions:{maxItems:4,items:[{value:'#28211D',label:L('sample.inkBrown','茶色')},{value:'#000000',label:L('sample.inkBlack','黒')},{value:'#384860',label:L('sample.inkBlue','青')},{value:'#404040',label:L('sample.inkGray','灰色')}]}}
+];
+const descriptor={moduleApiVersion:1,executionApiVersion:1,requiresFeatures:['color-suggestions'],kind:'filter',id:'sosboy-san.color-suggestions-sample',name:'色候補API接続サンプル',version:'1.0.0',implementationRevision:'color-suggestions-sample1',author:'sosboy-san',description:'固定パレットとCPU解析からの色候補を確認するパススルーサンプル。',supportedStages:['pre','post'],parameters,
+analysis:{revision:'sample-corner1',backend:'cpu',target:'original',parameterKeys:[],sample:{regions:[{rect:[0,0,1,1],method:'nearest',width:16,height:16}]},resultSchema:{type:'object',properties:{paperCandidates:{type:'array',maxItems:4,items:{type:'string',maxLength:7}}}}},
+create(){return {prepare(){return {supported:true}},analyze({sample}){const p=sample.regions[0].pixels;return {data:{paperCandidates:['#'+Array.from(p.slice(0,3),v=>v.toString(16).padStart(2,'0')).join('').toUpperCase(),'#FFFFFF']}}},execute(){return {kind:'passthrough'}},dispose(){}};}};
+(globalThis.__KKGR_MODULES__??=[]).push(descriptor);
+})();

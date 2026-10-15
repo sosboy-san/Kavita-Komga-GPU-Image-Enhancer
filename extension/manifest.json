@@ -1,0 +1,64 @@
+{
+  "manifest_version": 3,
+  "name": "Kavita & Komga GPU Image Enhancer",
+  "version": "0.9.5",
+  "version_name": "Beta 0.9.5",
+  "minimum_chrome_version": "135",
+  "description": "GPU image processing for Kavita and Komga with public GPU API 1 renderers and filters.",
+  "permissions": [
+    "storage",
+    "scripting",
+    "activeTab",
+    "userScripts"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "action": {
+    "default_title": "Kavita & Komga GPU Image Enhancer",
+    "default_icon": {
+      "16": "icons/unregistered-16.png",
+      "32": "icons/unregistered-32.png",
+      "48": "icons/unregistered-48.png",
+      "128": "icons/unregistered-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/unregistered-16.png",
+    "32": "icons/unregistered-32.png",
+    "48": "icons/unregistered-48.png",
+    "128": "icons/unregistered-128.png"
+  },
+  "options_ui": {
+    "page": "ui/settings.html",
+    "open_in_tab": true
+  },
+  "sandbox": {
+    "pages": [
+      "ui/module-sandbox.html",
+      "gpu/worker-frame.html"
+    ]
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'",
+    "sandbox": "sandbox allow-scripts; default-src 'none'; script-src 'self' 'unsafe-eval'; worker-src blob:;"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAs7lfJQYwJLCrpgRwWp4EQk/5cHMZ1LIz0n+n1AUFIPZ1PHk4cMSTOYAdOA105GcT3ZEeWysJlRmCMERPiq08CUoAnDwUKju3Vvir6HYOqagGy0OGoo2eh1WO1ziZ37WTJxQP3HqwfvwjE43o+3j0gD27obBovNp2pWFxXAjFl8geB4gYYp/EP/LVY4mCswLgpfp2918+WmR+C6PYNqGZdw1M0OZ3F7UH0GX6ROa/BmTqGsKF3GyT5ADNvBbKBrt00jil/DjghoY4QHKC7KIR6XpLe0hI3DArd7OPT5H4CjBsih1qWHaIGi1u+EAQrEU6zpMarCTNNVI8YuxX0JqfcQIDAQAB",
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "gpu/worker-frame.html",
+        "gpu/worker-frame.js",
+        "gpu/worker-source.js"
+      ],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ]
+    }
+  ]
+}

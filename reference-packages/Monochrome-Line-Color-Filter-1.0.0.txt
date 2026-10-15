@@ -1,0 +1,185 @@
+// Copyright (c) 2026 sosboy-san. SPDX-License-Identifier: MIT.
+/* GPU Image Enhancer API v1.0 / Monochrome Line Color v1.0.0
+ * CPU: luminance-dependent chroma regression + spatial tile evidence.
+ * GPU: independent ink color and darkness control. Validated mode thresholds; preserve behavior across optimizations.
+ */
+(() => {
+  'use strict';
+  const L = (key, fallback) => ({key, fallback});
+  const parameters = [
+    {key:'mode',type:'enum',label:L("mono.mode","Detection mode"),default:'standard',options:[
+      {value:'mono',label:L("mono.preferMono","Prefer monochrome")},
+      {value:'standard',label:L("mono.standard","Standard (recommended)")},
+      {value:'protect',label:L("mono.protect","Enhanced color protection")},
+      {value:'force',label:L("mono.force","Force application (ignore detection)")}
+    ]},
+    {key:'lineColor',type:'color',label:L("mono.lineColor","Ink color"),default:'#28211D',suggestions:{maxItems:4,items:[{value:'#28211D',label:L("mono.palette.brown","Brown")},{value:'#000000',label:L("mono.palette.black","Black")},{value:'#384860',label:L("mono.palette.blue","Blue")},{value:'#404040',label:L("mono.palette.gray","Gray")}]}},
+    {key:'lineStrength',type:'integer',label:L("mono.strength","Ink darkness (0\u2013100)"),min:0,max:100,step:5,default:50}
+  ];
+  // The regression removes a single grayscale/sepia tint axis correlated with brightness.
+   const profiles = [
+    {soft:0.17,hard:0.055,tile:0.22},
+    {soft:0.11,hard:0.032,tile:0.15},
+    {soft:0.075,hard:0.020,tile:0.11},
+    {soft:0.047,hard:0.011,tile:0.075},
+    {soft:0.027,hard:0.006,tile:0.045}
+  ];
+  const fragment = `#version 300 es
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+in vec2 v_uv;
+uniform sampler2D image;
+uniform vec3 lineColor;
+uniform float strength;
+layout(location=0) out vec4 outColor;
+void main() {
+  vec4 c = texture(image, v_uv);
+  float y = dot(clamp(c.rgb, 0.0, 1.0), vec3(0.2126, 0.7152, 0.0722));
+  // White remains white, black maps to the chosen ink color.
+  // Strength 0 preserves original luminance; 100 darkens midtones.
+  float adjusted = pow(y, 1.0 + 2.0 * strength);
+  vec3 rgb = mix(lineColor, vec3(1.0), adjusted);
+  outColor = vec4(rgb, c.a);
+}`;
+  const descriptor = {
+    moduleApiVersion:1, executionApiVersion:1, requiresFeatures:['color-suggestions'], kind:'filter',
+    id:'sosboy-san.monochrome-line-color',
+    name:"Monochrome Line Color", version:'1.0.0',
+    implementationRevision:'mono-line-3-ink-chroma-guard-palette1',
+    supportedStages:['pre'], author:'sosboy-san', license:'MIT', homepage:"https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer", source:"https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer",
+    description:"Adjusts ink color and darkness on images classified as monochrome, with selectable color protection.",
+    readme:"Color-detection sensitivity increases from Prefer monochrome to Standard. Enhanced color protection additionally checks the original dark-area colors on images classified as monochrome by Standard. Force application also affects color images.",
+    translations: {"en": {"name": "Monochrome Line Color", "description": "Adjusts ink color and darkness on images classified as monochrome, with selectable color protection.", "readme": "Color-detection sensitivity increases from Prefer monochrome to Standard. Enhanced color protection additionally checks the original dark-area colors on images classified as monochrome by Standard. Force application also affects color images.", "labels": {"mono.mode": "Detection mode", "mono.preferMono": "Prefer monochrome", "mono.standard": "Standard (recommended)", "mono.protect": "Enhanced color protection", "mono.force": "Force application (ignore detection)", "mono.lineColor": "Ink color", "mono.palette.brown": "Brown", "mono.palette.black": "Black", "mono.palette.blue": "Blue", "mono.palette.gray": "Gray", "mono.strength": "Ink darkness (0–100)", "mono.diag.result": "CPU color classification", "mono.diag.soft": "Residual chroma above 10 ratio", "mono.diag.hard": "Residual chroma above 24 ratio", "mono.diag.tiles": "Colored tile ratio", "mono.diag.slope": "Chroma versus luminance slope", "mono.diag.pixels": "Valid sample pixels", "mono.diag.baseline": "Baseline classified as color", "mono.diag.guard": "Additional color protection triggered", "mono.diag.darkRatio": "Chromatic dark pixel ratio", "mono.diag.darkMean": "Mean dark pixel RGB chroma", "mono.diag.darkPixels": "Dark sample pixels"}}, "ja": {"name": "カラー判定付き線色・濃度調整", "description": "モノクロ優先・標準・カラー保護強化・強制適用の4モードで線色と濃さを調整します。", "readme": "感度はモノクロ優先→標準、カラー保護強化は標準でモノクロと判定された画像に対し、補正前の暗部の色を追加確認します。強制適用はカラー画像にも作用します。", "labels": {"mono.mode": "判定モード", "mono.preferMono": "モノクロ優先", "mono.standard": "標準（推奨）", "mono.protect": "カラー保護強化", "mono.force": "強制適用（判定を無視）", "mono.lineColor": "線の色", "mono.palette.brown": "茶色", "mono.palette.black": "黒", "mono.palette.blue": "青", "mono.palette.gray": "灰色", "mono.strength": "線の濃さ（0～100）", "mono.diag.result": "CPUカラー判定", "mono.diag.soft": "補正後色差10超の割合", "mono.diag.hard": "補正後色差24超の割合", "mono.diag.tiles": "色のあるタイルの割合", "mono.diag.slope": "色差・明度の変化係数", "mono.diag.pixels": "有効サンプル画素数", "mono.diag.baseline": "従来判定カラー", "mono.diag.guard": "追加カラー保護が発動", "mono.diag.darkRatio": "暗部の有彩色画素割合", "mono.diag.darkMean": "暗部の平均RGB色差", "mono.diag.darkPixels": "暗部のサンプル画素数"}}},
+    parameters,
+    analysis:{
+      revision:'chroma-regression-ink-guard-release1', backend:'cpu', target:'original',
+      parameterKeys:['mode'],
+      sample:{regions:[{rect:[0,0,1,1],method:'nearest',width:384,height:384}]},
+      resultSchema:{type:'object',properties:{
+        isColor:{type:'boolean'},
+        residualSoftRatio:{type:'number',min:0,max:1},
+        residualHardRatio:{type:'number',min:0,max:1},
+        coloredTileRatio:{type:'number',min:0,max:1},
+        validPixels:{type:'integer',min:0,max:147456},
+        baselineIsColor:{type:'boolean'},
+        inkGuardTriggered:{type:'boolean'},
+        darkChromaRatio:{type:'number',min:0,max:1},
+        darkChromaMean:{type:'number',min:0,max:500},
+        darkPixels:{type:'integer',min:0,max:147456}
+      }}
+    },
+    create(host) {
+      let program = null;
+      return {
+        prepare() {
+          program = host.createProgram({fragment,samplers:['image'],uniforms:{
+            lineColor:{type:'vec3'},strength:{type:'float'}
+          }});
+          return {supported:true};
+        },
+        async analyze({sample,parameters:p,signal}) {
+          const r = sample.regions[0], px=r.pixels, w=r.width, h=r.height;
+          const tilesX=8, tilesY=8, tileN=64;
+          const tileValid=new Uint32Array(tileN), tileSoft=new Uint32Array(tileN);
+          // Fit each chroma opponent channel as a linear function of luminance.
+          // This explains uniform paper tint / sepia grayscale without assuming R=G=B.
+          let n=0,sy=0,syy=0,su=0,sv=0,syu=0,syv=0;
+          for (let y=0;y<h;y++) {
+            if (signal.aborted) throw new Error('CPU解析が取り消されました');
+            for (let x=0;x<w;x++) {
+              const i=(y*w+x)*4;
+              if (px[i+3]<128) continue;
+              const R=px[i],G=px[i+1],B=px[i+2];
+              const lum=0.2126*R+0.7152*G+0.0722*B;
+              const u=R-G, v=B-G;
+              n++;sy+=lum;syy+=lum*lum;su+=u;sv+=v;syu+=lum*u;syv+=lum*v;
+            }
+            if ((y&63)===63) await new Promise(resolve=>setTimeout(resolve,0));
+          }
+          const denom=n*syy-sy*sy;
+          const au=Math.abs(denom)>1e-6?(n*syu-sy*su)/denom:0;
+          const av=Math.abs(denom)>1e-6?(n*syv-sy*sv)/denom:0;
+          const bu=n?(su-au*sy)/n:0, bv=n?(sv-av*sy)/n:0;
+          let soft=0,hard=0;
+          let darkPixels=0,darkChromaCount=0,darkChromaSum=0;
+          // Absolute ink color, measured BEFORE regression removes a global tint.
+          // Only mid-dark pixels are inspected; white paper and near-black noise
+          // should not dominate the color-protection guard.
+
+          for (let y=0;y<h;y++) {
+            if (signal.aborted) throw new Error('CPU解析が取り消されました');
+            for (let x=0;x<w;x++) {
+              const i=(y*w+x)*4;
+              if (px[i+3]<128) continue;
+              const R=px[i],G=px[i+1],B=px[i+2];
+              const lum=0.2126*R+0.7152*G+0.0722*B;
+              if (lum>=28 && lum<=150) {
+                darkPixels++;
+                const chroma=Math.max(R,G,B)-Math.min(R,G,B);
+                darkChromaSum+=chroma;
+                if (chroma>=24 && chroma/Math.max(1,Math.max(R,G,B))>=0.20)
+                  darkChromaCount++;
+              }
+              const du=(R-G)-(au*lum+bu),dv=(B-G)-(av*lum+bv);
+              const residualSq=du*du+dv*dv;
+              const t=Math.min(7,Math.floor(y*8/h))*8+Math.min(7,Math.floor(x*8/w));
+              tileValid[t]++;
+              if (residualSq>100) {soft++;tileSoft[t]++;}
+              if (residualSq>576) hard++;
+            }
+            if ((y&63)===63) await new Promise(resolve=>setTimeout(resolve,0));
+          }
+          let tiles=0, coloredTiles=0;
+          for(let t=0;t<tileN;t++) {
+            if(tileValid[t]<16) continue;
+            tiles++;
+            if(tileSoft[t]/tileValid[t]>0.18) coloredTiles++;
+          }
+          const residualSoftRatio=n?soft/n:0;
+          const residualHardRatio=n?hard/n:0;
+          const coloredTileRatio=tiles?coloredTiles/tiles:0;
+          const q=profiles[p.mode==='mono'?2:4];
+          // Require global evidence or spatially distributed local evidence.
+          const chromaSlope=Math.sqrt(au*au+av*av);
+          // Two flat colors can fit a line perfectly; a steep chroma-vs-luminance
+          // slope is a separate clue. A uniformly tinted grayscale has a gentler slope.
+          const strongChromaAxis=chromaSlope>0.65 &&
+            Math.sqrt((su/n||0)**2+(sv/n||0)**2)>8;
+          const baselineIsColor=residualSoftRatio>=q.soft || residualHardRatio>=q.hard ||
+            (coloredTileRatio>=q.tile && residualSoftRatio>=q.soft*0.35) || strongChromaAxis;
+          const darkChromaRatio=darkPixels?darkChromaCount/darkPixels:0;
+          const darkChromaMean=darkPixels?darkChromaSum/darkPixels:0;
+          // Protect substantial non-neutral ink-like dark colors.
+          const inkGuardTriggered=p.mode==='protect' && !baselineIsColor &&
+            darkPixels>=n*0.08 && darkChromaRatio>=0.38 && darkChromaMean>=20;
+          const isColor=baselineIsColor || inkGuardTriggered;
+          return {data:{isColor,residualSoftRatio,residualHardRatio,coloredTileRatio,validPixels:n,
+            baselineIsColor,inkGuardTriggered,darkChromaRatio,darkChromaMean,darkPixels},diagnostics:[
+            {label:L("mono.diag.result","CPU color classification"),value:isColor},
+            {label:L("mono.diag.soft","Residual chroma above 10 ratio"),value:residualSoftRatio},
+            {label:L("mono.diag.hard","Residual chroma above 24 ratio"),value:residualHardRatio},
+            {label:L("mono.diag.tiles","Colored tile ratio"),value:coloredTileRatio},
+            {label:L("mono.diag.slope","Chroma versus luminance slope"),value:chromaSlope},
+            {label:L("mono.diag.pixels","Valid sample pixels"),value:n},
+             {label:L("mono.diag.baseline","Baseline classified as color"),value:baselineIsColor},
+             {label:L("mono.diag.guard","Additional color protection triggered"),value:inkGuardTriggered},
+             {label:L("mono.diag.darkRatio","Chromatic dark pixel ratio"),value:darkChromaRatio},
+             {label:L("mono.diag.darkMean","Mean dark pixel RGB chroma"),value:darkChromaMean},
+             {label:L("mono.diag.darkPixels","Dark sample pixels"),value:darkPixels}
+          ]};
+        },
+        execute({input,output,parameters:p,analysis}) {
+          if (p.mode!=='force' && analysis.data.isColor)
+            return {kind:'passthrough'};
+          host.drawPass({program,inputs:{image:input},output,uniforms:{
+            lineColor:host.colorToRgb(p.lineColor),strength:p.lineStrength/100
+          }});
+          return {kind:'written'};
+        },
+        dispose() {if(program) host.releaseProgram(program);program=null;}
+      };
+    }
+  };
+  (globalThis.__KKGR_MODULES__ ??= []).push(descriptor);
+})();
