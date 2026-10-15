@@ -213,7 +213,7 @@ These three modules are **distributed separately from the extension**. Install o
 | Name | Purpose |
 | --- | --- |
 | Paper Restoration | Bring yellowed paper closer to white and correct variations in paper tint |
-| Monochrome Line Color | Adjust line color and darkness on monochrome pages while protecting pages identified as color |
+| Monochrome Line Color | Adjust line color and darkness on monochrome pages, with color detection to help avoid changes to color pages |
 | Lanczos3 | Add another resizing method |
 
 ### Paper Restoration
