@@ -85,8 +85,6 @@ Paper Restorationは、古い漫画の黄ばんだ紙を白い紙に近づける
 
 GPU処理にはWebGL2などの対応機能が必要です。拡張機能の最低Chromeバージョン指定は135です。Androidでは拡張機能とCRXの導入に対応したブラウザーが必要です。
 
-**公開前の確認事項：** サイト別の実機確認済み表示モードを追記します。
-
 ## [ダウンロードとインストール](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta)
 
 | 配布物 | 用途 |
@@ -328,7 +326,7 @@ PCではスライダーをクリック・ドラッグし、数値を直接入力
 
 不具合を報告する際は、本体・サイト・ブラウザーの版、表示モード、使用中のモジュール、再現手順を添えてください。認証情報や個人情報を含むログを、そのまま公開しないでください。
 
-**公開前の確認事項：** 不具合報告先のリンクを追加します。
+不具合報告は[GitHub Issues](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/issues)へお願いします。
 
 ## 権限とデータの取り扱い
 

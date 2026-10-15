@@ -83,8 +83,6 @@ Komga's new GUI has not been tested.
 
 GPU processing requires features including WebGL2. The extension specifies Chrome 135 as its minimum version. Android requires a browser that can install extensions from CRX files.
 
-**To confirm before publication:** reading modes tested on each site.
-
 ## [Download and installation](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta)
 
 | Package | Purpose |
@@ -325,7 +323,7 @@ For large images, the current page may display even when nearby pages cannot be 
 
 When reporting a problem, include extension, site, and browser versions; reading mode; modules used; and reproduction steps. Do not publish logs containing authentication or personal information without checking them.
 
-**To confirm before publication:** the issue-reporting link.
+Please report problems through [GitHub Issues](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/issues).
 
 ## Permissions and data handling
 
