@@ -376,6 +376,8 @@ GPU Unsharp Mask・Paper Restoration・Monochrome Line ColorはMITライセン�
 
 ## モジュールを作りたい方へ
 
+まずは[最初のフィルターを作る](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/blob/main/docs/Module-Quickstart-ja.md)から始められます。スライダー1本の完成サンプルを読み込み、明るさを変え、コードを修正して更新する手順を紹介しています。
+
 公開GPUモジュールAPI 1.0で、レンダラーやフィルターを作成できます。調整画面の生成、元画像のCPU解析、解析結果を使ったGPU処理などに対応しています。
 
 英語の表示情報を必須とし、日本語などの追加言語もモジュールに同梱できます。

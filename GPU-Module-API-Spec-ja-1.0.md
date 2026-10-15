@@ -2,6 +2,8 @@
 
 レンダラー・フィルターの作者向け仕様です。
 
+初めて作る場合は[最初のフィルターを作る](docs/Module-Quickstart-ja.md)（[English](docs/Module-Quickstart-en.md)）から始めてください。動作するサンプルと、修正・再登録の手順があります。
+
 | 項目 | 値 |
 | --- | --- |
 | 公開API | 1.0 |

@@ -373,6 +373,8 @@ Independently authored core code, README, public API documentation and the offic
 
 ## Creating modules
 
+Start with [Build your first filter](docs/Module-Quickstart-en.md): load a complete one-slider example, adjust brightness, edit the code, and install an updated version.
+
 The public GPU module API 1.0 supports renderers and filters, generated adjustment panels, CPU analysis of original images, and GPU processing using analysis results.
 
 English display information is required. Modules can include additional languages such as Japanese.
