@@ -87,7 +87,7 @@ GPU処理にはWebGL2などの対応機能が必要です。拡張機能の最�
 
 **公開前の確認事項：** サイト別の実機確認済み表示モードを追記します。
 
-## ダウンロードとインストール
+## [ダウンロードとインストール](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta)
 
 | 配布物 | 用途 |
 | --- | --- |
@@ -95,11 +95,11 @@ GPU処理にはWebGL2などの対応機能が必要です。拡張機能の最�
 | 本体CRX | Androidの確認済みブラウザー向け |
 | モジュールパックZIP | 任意で追加するフィルター・レンダラー |
 
-追加モジュールは必須ではありません。本体にはLoHalo Jr.、NoHalo Jr.、GPUアンシャープマスクが組み込まれています。公式リポジトリは[Kavita-Komga-GPU-Image-Enhancer](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer)です。現在は公開準備中です。配布開始後にダウンロードリンクを追加します。
+追加モジュールは必須ではありません。本体にはLoHalo Jr.、NoHalo Jr.、GPUアンシャープマスクが組み込まれています。公式リポジトリは[Kavita-Komga-GPU-Image-Enhancer](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer)です。[Releaseページ](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta)から本体ZIP・CRX・追加モジュールをダウンロードできます。
 
 ### PC：Chrome
 
-1. 本体ZIPをダウンロードし、フォルダーへ展開します。
+1. [Releaseページ](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta)から本体ZIPをダウンロードし、フォルダーへ展開します。
 2. Chromeで拡張機能の管理画面を開きます。
 3. デベロッパーモードを有効にします。
 4. 「パッケージ化されていない拡張機能を読み込む」から、manifest.jsonが入っているフォルダーを選びます。

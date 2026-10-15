@@ -85,7 +85,7 @@ GPU processing requires features including WebGL2. The extension specifies Chrom
 
 **To confirm before publication:** reading modes tested on each site.
 
-## Download and installation
+## [Download and installation](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta)
 
 | Package | Purpose |
 | --- | --- |
@@ -95,11 +95,11 @@ GPU processing requires features including WebGL2. The extension specifies Chrom
 
 Additional modules are optional. LoHalo Jr., NoHalo Jr., and GPU Unsharp Mask are built in.
 
-The official repository is [Kavita-Komga-GPU-Image-Enhancer](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer). Publication is being prepared; download links will be added when distribution begins.
+The official repository is [Kavita-Komga-GPU-Image-Enhancer](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer). Download the extension ZIP, CRX, and optional module pack from the [Release page](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta).
 
 ### PC: Chrome
 
-1. Download and extract the extension ZIP.
+1. Download the extension ZIP from the [Release page](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta) and extract it.
 2. Open Chrome's extension management page.
 3. Enable Developer mode.
 4. Select **Load unpacked**, then choose the folder containing `manifest.json`.
