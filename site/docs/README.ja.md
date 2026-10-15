@@ -8,6 +8,10 @@ Kavita & Komga GPU Image Enhancer（GPUIE）は、Kavita・Komga向けのブラ�
 
 現在の本体は **0.9.5 β**、公開モジュールAPIは **1.0** です。
 
+<img src="../assets/guide/komga-interface.png" width="760" alt="Komgaの読書画面で開いたGPUIEのメニューとクイック操作">
+
+Komgaの読書メニューを開くと、画質調整のクイックアイコンが表示されます。画面では追加モジュールの紙地復元を使用しています。
+
 ## まず使うには
 
 1. **本体をインストールする。** [Releaseページ](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta)から本体ZIPをダウンロードして展開し、Chromeへ読み込みます。[インストール手順](#ダウンロードとインストール)

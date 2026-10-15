@@ -8,6 +8,10 @@ Kavita & Komga GPU Image Enhancer (GPUIE) is a browser extension for Kavita and 
 
 The current extension version is **0.9.5 beta**. The public module API is **1.0**.
 
+<img src="../assets/guide/komga-interface.png" width="760" alt="GPUIE menu and quick controls in the Komga reader">
+
+Open Komga’s reading menu to show the image-quality quick controls. This screenshot also uses the optional Paper Restoration module.
+
 ## Get started
 
 1. **Install the extension.** Download the extension ZIP from the [Release page](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta), extract it, and load it in Chrome. [Installation steps](#download-and-installation)
