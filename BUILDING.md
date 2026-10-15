@@ -25,4 +25,4 @@ reference-packages/ contains the three separately distributed public modules. Te
 
 ## Introduction page
 
-site/index.html is a buildless static page. Keep styles.css, script.js, assets/ and docs/ at the same relative locations. The relative structure supports GitHub Pages subdirectory hosting. Comparison and GUI images remain unconfigured pending permission and material checks. No analytics or external font dependencies are used.
+site/index.html is a buildless static page. Keep styles.css, script.js, assets/ and docs/ at the same relative locations. The relative structure supports GitHub Pages subdirectory hosting. Comparison images, quick-control icons, and illustrated package-import instructions are included. The guide screenshots reproduce the current UI implementation. No analytics or external font dependencies are used.

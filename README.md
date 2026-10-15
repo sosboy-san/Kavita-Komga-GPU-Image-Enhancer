@@ -355,11 +355,11 @@ LoHalo Jr. and NoHalo Jr. are based on GEGL implementations and retain the origi
 
 See the bundled documents and each module's Info panel for original authors, sources, and license texts.
 
-GPUIE development, adaptation, modifications, and maintenance are handled by sosboy-san. The original author of Crisp Images-derived portions is Ikkoru (previously credited as Igkor Bevzenidis). The original algorithms and code behind LoHalo Jr. and NoHalo Jr. are by GEGL's respective authors. These credits do not imply an official GPUIE release, endorsement, or support by the original authors. Please report GPUIE issues to the GPUIE project.
+I (sosboy-san) develop, adapt, modify, and maintain GPUIE. The original author of Crisp Images-derived portions is Ikkoru (previously credited as Igkor Bevzenidis). The original algorithms and code behind LoHalo Jr. and NoHalo Jr. are by GEGL's respective authors. These credits do not imply an official GPUIE release, endorsement, or support by the original authors. Please report GPUIE issues to the GPUIE project.
 
 GPU Unsharp Mask, Paper Restoration, and Monochrome Line Color are distributed under the MIT license. Third-party portions retain their respective license notices.
 
-Development assistance: OpenAI ChatGPT / Codex, used in design discussions, implementation, testing, and documentation.
+I use ChatGPT / Codex by OpenAI for design, implementation, testing, and documentation.
 
 Independently authored core code, README, public API documentation and the official introduction page are also MIT-licensed. Third-party-derived code retains its existing licenses. Comic images and other third-party comparison assets are excluded from this MIT declaration. See [license scope](LICENSE.md) and [third-party notices](THIRD-PARTY-NOTICES.md).
 

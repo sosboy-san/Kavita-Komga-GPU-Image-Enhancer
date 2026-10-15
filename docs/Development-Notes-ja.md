@@ -190,6 +190,6 @@ GPUIEが、KavitaやKomgaで漫画を読む人にとって、そんな選択肢�
 
 ### クレジットについて
 
-GPUIEの開発には、OpenAI ChatGPT / Codexによる支援を活用しています。
+本プロジェクトの設計、実装、テスト、ドキュメント作成には、OpenAIのChatGPT / Codexを活用しています。
 
 Crisp ImagesおよびGEGL由来の実装については、原作者の権利とライセンスを尊重し、出典・クレジットを別途記載しています。

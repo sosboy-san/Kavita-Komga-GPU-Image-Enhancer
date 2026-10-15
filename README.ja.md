@@ -358,11 +358,11 @@ LoHalo Jr.・NoHalo Jr.はGEGLの実装を基にしており、原作者のク�
 
 原作者・出典・ライセンス文書は、同梱資料と各モジュールのInfoを参照してください。
 
-GPUIEの開発・移植・改修・保守はsosboy-sanが担当します。Crisp Images由来部分の原作者はIkkoru（旧表記：Igkor Bevzenidis）、LoHalo Jr.・NoHalo Jr.の原アルゴリズム・コードはGEGLの各原作者によるものです。原作者クレジットは、GPUIEが原作者による公式版・推奨であることや、原作者がサポートすることを示すものではありません。不具合報告はGPUIE側へお願いします。
+GPUIEは私（sosboy-san）が開発・移植・改修・保守しています。Crisp Images由来部分の原作者はIkkoru（旧表記：Igkor Bevzenidis）、LoHalo Jr.・NoHalo Jr.の原アルゴリズム・コードはGEGLの各原作者によるものです。原作者クレジットは、GPUIEが原作者による公式版・推奨であることや、原作者がサポートすることを示すものではありません。不具合報告はGPUIE側へお願いします。
 
 GPU Unsharp Mask・Paper Restoration・Monochrome Line ColorはMITライセンスで配布します。第三者由来部分のライセンスは、それぞれの表記を維持します。
 
-開発支援：OpenAI ChatGPT / Codex。設計の検討、実装、検証、文書整備に活用しています。
+本プロジェクトの設計、実装、テスト、ドキュメント作成には、OpenAIのChatGPT / Codexを活用しています。
 
 本体の独立した自作部分・README・公開API仕様書・公式紹介ページもMITライセンスです。第三者由来コードのライセンスは維持し、漫画などの比較素材はこのMIT指定に含めません。詳しくは[ライセンスの適用範囲](LICENSE.md)と[第三者クレジット](THIRD-PARTY-NOTICES.md)を参照してください。
 
