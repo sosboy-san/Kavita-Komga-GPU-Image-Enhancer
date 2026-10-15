@@ -60,7 +60,7 @@ LoHalo Jr.とNoHalo Jr.は、GIMPで利用されているGEGLのLoHalo・NoHalo�
 
 比較用の[原画像](site/assets/comparisons/manga-original.jpg)はAI（Gemini）で作成しました。BrowserとGPUIEのLoHalo Jr.で実際に縮小表示してキャプチャーしています。
 
-※READMEの表示幅によって再縮小される場合があります。[紹介ページの比較表示](site/index.html#compare-resize)では、画素等倍表示や画像の切り替えで確認できます。見え方は元画像・縮小率・表示環境によって異なります。
+※READMEの表示幅によって再縮小される場合があります。[紹介ページの比較表示](https://sosboy-san.github.io/Kavita-Komga-GPU-Image-Enhancer/#compare-resize)では、画素等倍表示や画像の切り替えで確認できます。見え方は元画像・縮小率・表示環境によって異なります。
 
 ### 紙の黄ばみを整える
 

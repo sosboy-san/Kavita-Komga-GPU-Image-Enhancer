@@ -58,7 +58,7 @@ The same source image is downscaled from **1696×2528 to 1073×1600 pixels (abou
 
 The [source artwork](site/assets/comparisons/manga-original.jpg) was created with Gemini AI. The images were captured after actual downscaling with Browser and GPUIE’s LoHalo Jr.
 
-README viewers may scale the images again. Use the [product page comparison](site/index.html#compare-resize) to view at 1:1 pixels or switch between images. Results vary with the source, scale and display environment.
+README viewers may scale the images again. Use the [product page comparison](https://sosboy-san.github.io/Kavita-Komga-GPU-Image-Enhancer/#compare-resize) to view at 1:1 pixels or switch between images. Results vary with the source, scale and display environment.
 
 ### Restore yellowed paper
 
