@@ -6,7 +6,7 @@ let language=(navigator.language||'en').toLowerCase().startsWith('ja')?'ja':'en'
 function applyLanguage(next){
  language=next==='ja'?'ja':'en';html.dataset.language=language;html.lang=language;
  document.querySelectorAll('[data-lang]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lang===language)));
- document.querySelectorAll('.readme-link').forEach(a=>a.href=`docs/README.${language}.md`);
+ document.querySelectorAll('.readme-link').forEach(a=>a.href=`https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/blob/main/README.${language}.md`);
  document.querySelectorAll('.comparison').forEach(c=>{
   c.querySelector('.before').alt=language==='ja'?'補正前・比較基準の実画像':'Actual image before processing / reference';
   c.querySelector('.after').alt=language==='ja'?'同一原画像の実際の処理結果':'Actual processing result from the same original image';
