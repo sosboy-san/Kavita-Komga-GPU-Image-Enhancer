@@ -6,15 +6,28 @@
 
 Kavita & Komga GPU Image Enhancer（GPUIE）は、Kavita・Komga向けのブラウザー拡張機能です。LoHalo Jr.・NoHalo Jr.などの拡大・縮小方式に、前後のフィルターを組み合わせて、専用コミックビューアのような本格的な画質調整を行えます。サイト本来のレイアウトや読書操作をなるべく維持しながら、漫画の見え方を好みに合わせられます。
 
-現在の本体は **0.9.5 β**、公開モジュールAPIは **1.0** です。
+現在の本体は **0.9.6 β**、公開モジュールAPIは **1.0** です。
 
 <img src="../assets/guide/komga-interface.png" width="760" alt="Komgaの読書画面で開いたGPUIEのメニューとクイック操作">
 
 Komgaの読書メニューを開くと、画質調整のクイックアイコンが表示されます。画面では追加モジュールの紙地復元を使用しています。
 
+## 0.9.6 βの新機能
+
+- **Kavitaのページ移動アニメーション**：単ページ・見開き・見開き（マンガ）で、前後のページを水平スライドします。左右の読書方向と全画面に対応します。
+- **Kavitaの読書開始時に全画面表示**：読書画面を開いた際に全画面を試みます。ブラウザーの制限で開始できない場合は、Kavita本来の全画面ボタンを使用してください。
+- **読書画面内の詳細設定**：画面下のクイック操作から詳細設定を重ねて開き、「読書画面に戻る」で同じページへ戻れます。PCの拡張アイコンは従来のアイコンメニューを表示し、Androidの拡張アイコンは読書中に詳細設定を直接開きます。
+
+Kavitaの追加機能2点は **詳細設定 → オプション → 基本設定** で個別にON/OFFを切り替えます。どちらも初期値はOFFで、登録したKavitaサーバー間で共通です。Komgaには適用しません。
+アニメーションは縦スクロール・Webtoon・画像分割などの対象外モード、動きの抑制設定、ページ方向を確認できない場合には省略します。
+
+詳細設定はPC・Android共通で、横幅600 CSS px以上なら中央枠（最大820×680 CSS px）、600未満なら全面表示です。回転やFold開閉にも追従します。全画面中も、設定を閉じると全画面の読書へ戻ります。
+更新後は開いている読書タブを一度再読み込みしてください。テスト版は公開版と拡張IDが異なるため、公開版との同時使用を避けてください。
+
+
 ## まず使うには
 
-1. **本体をインストールする。** [Releaseページ](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta)から本体ZIPをダウンロードして展開し、Chromeへ読み込みます。[インストール手順](#ダウンロードとインストール)
+1. **本体をインストールする。** [Releaseページ](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.6-beta)から本体ZIPをダウンロードして展開し、Chromeへ読み込みます。[インストール手順](#ダウンロードとインストール)
 2. **読むサイトを登録する。** Kavita・Komgaのタブを開き、拡張アイコンから登録して、サイトへのアクセスを許可します。[最初の設定](#最初の設定)
 3. **LoHalo Jr.を選んで読む。** 読書画面のクイック操作でレンダラーを切り替え、見え方を比べてみてください。初期状態はBrowserです。[基本的な使い方](#基本的な使い方)
 
@@ -97,7 +110,7 @@ Paper Restorationは、古い漫画の黄ばんだ紙を白い紙に近づける
 
 GPU処理にはWebGL2などの対応機能が必要です。拡張機能の最低Chromeバージョン指定は135です。Androidでは拡張機能とCRXの導入に対応したブラウザーが必要です。
 
-## [ダウンロードとインストール](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta)
+## [ダウンロードとインストール](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.6-beta)
 
 | 配布物 | 用途 |
 | --- | --- |
@@ -105,11 +118,11 @@ GPU処理にはWebGL2などの対応機能が必要です。拡張機能の最�
 | 本体CRX | Androidの確認済みブラウザー向け |
 | モジュールパックZIP | 任意で追加するフィルター・レンダラー |
 
-追加モジュールは必須ではありません。本体にはLoHalo Jr.、NoHalo Jr.、GPUアンシャープマスクが組み込まれています。公式リポジトリは[Kavita-Komga-GPU-Image-Enhancer](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer)です。[Releaseページ](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta)から本体ZIP・CRX・追加モジュールをダウンロードできます。
+追加モジュールは必須ではありません。本体にはLoHalo Jr.、NoHalo Jr.、GPUアンシャープマスクが組み込まれています。公式リポジトリは[Kavita-Komga-GPU-Image-Enhancer](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer)です。[Releaseページ](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.6-beta)から本体ZIP・CRX・追加モジュールをダウンロードできます。
 
 ### PC：Chrome
 
-1. [Releaseページ](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta)から本体ZIPをダウンロードし、フォルダーへ展開します。
+1. [Releaseページ](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.6-beta)から本体ZIPをダウンロードし、フォルダーへ展開します。
 2. Chromeで拡張機能の管理画面を開きます。
 3. デベロッパーモードを有効にします。
 4. 「パッケージ化されていない拡張機能を読み込む」から、manifest.jsonが入っているフォルダーを選びます。

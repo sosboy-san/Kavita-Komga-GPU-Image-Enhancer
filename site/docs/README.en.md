@@ -6,15 +6,28 @@
 
 Kavita & Komga GPU Image Enhancer (GPUIE) is a browser extension for Kavita and Komga. Choose resizing methods such as LoHalo Jr. and NoHalo Jr., and combine them with filters before and after resizing, bringing advanced image-quality controls to your browser-based comic reader. It lets you adjust how comics look while keeping the site's layout and reading controls as much as possible.
 
-The current extension version is **0.9.5 beta**. The public module API is **1.0**.
+The current extension version is **0.9.6 beta**. The public module API is **1.0**.
 
 <img src="../assets/guide/komga-interface.png" width="760" alt="GPUIE menu and quick controls in the Komga reader">
 
 Open Komga’s reading menu to show the image-quality quick controls. This screenshot also uses the optional Paper Restoration module.
 
+## New in 0.9.6 beta
+
+- **Kavita page transitions**: Horizontal slides for single pages, double pages and manga spreads, including both reading directions and fullscreen.
+- **Open Kavita Reader in Fullscreen**: Attempts fullscreen when entering the reader. If the browser blocks automatic entry, use Kavita’s fullscreen button.
+- **Detailed settings inside the reader**: Open settings from the reader’s quick controls and choose **Return to reader** to resume the same page. The desktop toolbar icon keeps its existing quick menu. On Android, the toolbar icon opens detailed settings directly while reading.
+
+The two optional Kavita features are under **Detailed settings → Options → Basic settings**. Both default to OFF, apply across registered Kavita servers, and do not affect Komga.
+Transitions are skipped for vertical scrolling, Webtoon, split images and other unsupported modes, reduced motion, or an unknown reading direction.
+
+On desktop and Android, settings use a centered panel (up to 820×680 CSS px) at viewport widths of 600 CSS px or more, and fill narrower screens. The panel follows rotation and Fold resizing. Closing settings preserves reader fullscreen.
+Reload open reader tabs once after updating. Test builds use a different extension ID from the public build; avoid enabling both together.
+
+
 ## Get started
 
-1. **Install the extension.** Download the extension ZIP from the [Release page](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta), extract it, and load it in Chrome. [Installation steps](#download-and-installation)
+1. **Install the extension.** Download the extension ZIP from the [Release page](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.6-beta), extract it, and load it in Chrome. [Installation steps](#download-and-installation)
 2. **Register your reading site.** Open your Kavita or Komga tab, register it from the extension menu, and grant site access. [First-time setup](#first-time-setup)
 3. **Select LoHalo Jr. and start reading.** Use the renderer quick control in the reader to switch methods and compare the results. Browser is selected by default. [Basic use](#basic-use)
 
@@ -95,7 +108,7 @@ Komga's new GUI has not been tested.
 
 GPU processing requires features including WebGL2. The extension specifies Chrome 135 as its minimum version. Android requires a browser that can install extensions from CRX files.
 
-## [Download and installation](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta)
+## [Download and installation](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.6-beta)
 
 | Package | Purpose |
 | --- | --- |
@@ -105,11 +118,11 @@ GPU processing requires features including WebGL2. The extension specifies Chrom
 
 Additional modules are optional. LoHalo Jr., NoHalo Jr., and GPU Unsharp Mask are built in.
 
-The official repository is [Kavita-Komga-GPU-Image-Enhancer](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer). Download the extension ZIP, CRX, and optional module pack from the [Release page](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta).
+The official repository is [Kavita-Komga-GPU-Image-Enhancer](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer). Download the extension ZIP, CRX, and optional module pack from the [Release page](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.6-beta).
 
 ### PC: Chrome
 
-1. Download the extension ZIP from the [Release page](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta) and extract it.
+1. Download the extension ZIP from the [Release page](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.6-beta) and extract it.
 2. Open Chrome's extension management page.
 3. Enable Developer mode.
 4. Select **Load unpacked**, then choose the folder containing `manifest.json`.
