@@ -40,6 +40,8 @@ The SPA fixture uses the production service worker, MAIN adapter, isolated bridg
 
 Run `GPUIE_VERIFY_CONTROLS=1 TEST_CHROME=/path/to/chromium node tests/reader-spa-runtime-browser.cjs` to verify live background UI updates in both modes. This checks displayed pixel changes for USM, forced ink color and manual paper restoration, renderer changes, and an update delivered while an earlier handshake's STATUS response is deliberately held. Explicit PING/preparation requests must fetch a fresh configuration after any older handshake; joining the older result can lose a saved setting change.
 
+Run the same SPA and live-control checks with `GPUIE_OMIT_EMPTY_SLOTS=1` to omit OFF filter keys from injected runtime state. This reproduces the representation observed in device diagnostics: settings can contain `pre: null` while runtime slots omit `pre`. Both mean OFF and must allow the selected renderer and post-filter to run. `processing-selection.test.cjs` covers omitted/null slots and rejects genuinely different module IDs. The live-control checks also hold the settings renderer mirror behind the actual selected provider; only the provider executed by the job determines renderer consistency.
+
 This fixture is not a replacement for installed-extension tests in Chrome or Android Edge. The historical usm-memory-browser.cjs comparison additionally requires its original pre-optimization source at ../phase3-active-fix/extension/gpu/usm.js; that source is not in this repository.
 
 ## Introduction page
