@@ -1,13 +1,14 @@
 'use strict';
-importScripts('site-model.js','../modules/catalog.js','../ui/package-metadata.js','../ui/parameter-schema.js','../ui/analysis-contract.js','../ui/module-contract.js','../ui/candidate-policy.js','../ui/i18n.js','settings-tabs.js');
+importScripts('site-model.js','../modules/catalog.js','../modules/default-filters.js','default-packages.js','../ui/package-metadata.js','../ui/parameter-schema.js','../ui/analysis-contract.js','../ui/module-contract.js','../ui/candidate-policy.js','../ui/i18n.js','settings-tabs.js');
 const settingsTabs=chrome.runtime.onConnect?globalThis.__KKGR_SETTINGS_TABS__(id=>chrome.storage.local.set({dev1SettingsTabId:id})):null;
 const Policy=globalThis.__KKGR_CANDIDATE_POLICY__;
 const BUNDLED_CATALOG=globalThis.__KKGR_RENDERER_CATALOG__;
 let RENDERER_IDS=BUNDLED_CATALOG.filter(e=>e.kind!=='filter').map(e=>e.id);
 const withDeadline=promise=>{let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('実行が10秒以内に応答しませんでした。対象タブを表示してから再試行してください。')),10000);})]).finally(()=>clearTimeout(timer));};
-async function packageState(){return (await chrome.storage.local.get('managedRenderers')).managedRenderers||{revision:0,items:[]};}
+const defaultPackages=globalThis.__KKGR_DEFAULT_PACKAGE_STORE__.create(chrome.storage.local,async file=>{const r=await fetch(chrome.runtime.getURL(file));if(!r.ok)throw Error('Packaged filter unavailable');return r.text();});
+async function packageState(){return defaultPackages.get();}
 const runtimeId=item=>item.registrationId||item.metadata.id;
-function catalogItems(ps){return [...BUNDLED_CATALOG.map(x=>({...x})),...ps.items.map(x=>({...x.metadata,id:runtimeId(x),packageId:x.metadata.id,installed:x.installed,updated:x.updated,checksum:x.checksum||null,filename:x.filename,module:true,managed:true}))];}
+function catalogItems(ps){return [...BUNDLED_CATALOG.filter(x=>x.kind!=='filter').map(x=>({...x})),...ps.items.map(x=>({...x.metadata,id:runtimeId(x),packageId:x.metadata.id,installed:x.installed,updated:x.updated,checksum:x.checksum||null,filename:x.filename,bundled:!!x.bundledFile,module:true,managed:true}))];}
 async function moduleLocale(){const choice=(await chrome.storage.local.get('uiLanguage')).uiLanguage;return globalThis.__KKGR_I18N__.resolve(choice,chrome.i18n?.getUILanguage?.()||globalThis.navigator?.language||'en');}
 async function rendererCatalog(){const ps=await packageState();const locale=await moduleLocale(),entries=catalogItems(ps).filter(x=>x.kind!=='filter').map(x=>({...x,name:globalThis.__KKGR_PACKAGE_METADATA__.translated(x,'name',locale)||x.name}));const names=(await chrome.storage.local.get('config')).config?.rendererDisplayNames||{};for(const entry of entries){entry.originalName=entry.name;entry.name=names[entry.id]||(entry.managed&&entries.filter(x=>x.managed&&x.packageId===entry.packageId).length>1?entry.name+' · v'+entry.version:entry.name);}RENDERER_IDS=entries.map(e=>e.id);return entries;}
 // Keep the copied source intact. Isolate each registration queue, then alias only
@@ -24,20 +25,20 @@ async function managePackageInternal(m){
  if(m.type==='ADD_PACKAGE'||m.type==='UPDATE_PACKAGE'){
   const d=globalThis.__KKGR_MODULE_CONTRACT__.validatePublic(m.metadata);
   if(typeof m.code!=='string'||new TextEncoder().encode(m.code).length>1024*1024)throw Error('Invalid package source');
-  if(BUNDLED_CATALOG.some(x=>x.id===d.id))throw Error('同じIDの組み込みパッケージがあります。今回は更新できません。');
+  if(BUNDLED_CATALOG.some(x=>x.kind!=='filter'&&x.id===d.id))throw Error('同じIDの組み込みパッケージがあります。今回は更新できません。');
   if(ps.items.some(x=>x.metadata.id===d.id&&x.metadata.version===d.version))throw Error('同じID・同じバージョンが登録されています。既存のものは保持しました。');
-  if(m.type==='ADD_PACKAGE'&&BUNDLED_CATALOG.length+ps.items.length>=Policy.registrationLimit)throw Error(globalThis.__KKGR_I18N__.t('packages.limitReached',{limit:Policy.registrationLimit}));
+  if(m.type==='ADD_PACKAGE'&&BUNDLED_CATALOG.filter(x=>x.kind!=='filter').length+ps.items.length>=Policy.registrationLimit)throw Error(globalThis.__KKGR_I18N__.t('packages.limitReached',{limit:Policy.registrationLimit}));
   const family=ps.items.filter(x=>x.metadata.id===d.id);
   const checksum=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(m.code)))).map(x=>x.toString(16).padStart(2,'0')).join('');
-  const now=Date.now(),installation=crypto.randomUUID();
+  const now=Date.now(),installation=crypto.randomUUID(),bundledFile=defaultPackages.trustedFile(d,checksum);
   if(m.type==='UPDATE_PACKAGE'){
    const index=ps.items.findIndex(x=>runtimeId(x)===m.packageId);if(index<0||ps.items[index].metadata.id!==d.id)throw Error('更新対象のパッケージIDが一致しません。');
-   const old=ps.items[index];if(d.kind==='filter')for(const stage of ['pre','post'])if(c.filterParameters?.[stage]?.[runtimeId(old)])globalThis.__KKGR_PARAMETERS__.values(d.parameters,c.filterParameters[stage][runtimeId(old)]);if(old.metadata.kind!==d.kind)throw Error("Package kind cannot change during update");ps.items[index]={...old,metadata:d,checksum,code:m.code,filename:String(m.filename||'module.js'),updated:now,installation};
+   const old=ps.items[index];if(d.kind==='filter')for(const stage of ['pre','post'])if(c.filterParameters?.[stage]?.[runtimeId(old)])globalThis.__KKGR_PARAMETERS__.values(d.parameters,c.filterParameters[stage][runtimeId(old)]);if(old.metadata.kind!==d.kind)throw Error("Package kind cannot change during update");ps.items[index]={...old,metadata:d,checksum,code:m.code,bundledFile,filename:String(m.filename||'module.js'),updated:now,installation};
   }else{
    if(family.length&&m.mode!=='additional')throw Error('同じIDの別バージョンがあります。追加か更新を選択してください。');
-   const occupied=new Set([...BUNDLED_CATALOG.map(x=>x.id),...ps.items.map(runtimeId)]);
+   const occupied=new Set([...BUNDLED_CATALOG.filter(x=>x.kind!=='filter').map(x=>x.id),...ps.items.map(runtimeId)]);
    const id=occupied.has(d.id)?'package.'+crypto.randomUUID():d.id;
-   ps.items.push({registrationId:id,metadata:d,checksum,code:m.code,filename:String(m.filename||'module.js'),installed:now,installation});
+   ps.items.push({registrationId:id,metadata:d,checksum,code:m.code,bundledFile,filename:String(m.filename||'module.js'),installed:now,installation});
    if(d.kind!=='filter')c.disabledRenderers=[...new Set([...c.disabledRenderers,id])];
   }
  }else if(m.type==='DELETE_PACKAGE'){
