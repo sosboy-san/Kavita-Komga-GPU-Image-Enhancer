@@ -78,7 +78,9 @@
   // Debug and runtime caches are deliberately session-only.
   let detailsVisible = !!platform.settings.developerMode&&platform.settings.hudMode==='details';
   globalThis.__KKGR_DIAGNOSTICS__?.configure(platform.settings);
-  const releaseProcessedURL=url=>{globalThis.__KKGR_DIAGNOSTICS__?.releaseURL?.(url);URL.revokeObjectURL(url);};
+  const revokeProcessedURL=url=>{globalThis.__KKGR_DIAGNOSTICS__?.releaseURL?.(url);URL.revokeObjectURL(url);};
+  const motionURLs=globalThis.__KKGR_KAVITA_MOTION__?.createURLLeases(revokeProcessedURL);
+  const releaseProcessedURL=url=>motionURLs?motionURLs.releaseOwned(url):revokeProcessedURL(url);
   const processedURL=blob=>{const url=URL.createObjectURL(blob);return globalThis.__KKGR_DIAGNOSTICS__?.bindURL(url,blob)||url;};
   let disabledRenderers = new Set(platform.settings.disabledRenderers || []);
   let quality;
@@ -275,7 +277,7 @@
   }
 
   function totalCacheBytes() {
-    return blobBytes + historyBytes + kavitaAheadBytes() + komgaAheadBytes() + KavitaSplit.bytes();
+    return (motionURLs?.pendingBytes()||0) + blobBytes + historyBytes + kavitaAheadBytes() + komgaAheadBytes() + KavitaSplit.bytes();
   }
 
   function retainViewedPage(s) {
@@ -509,6 +511,7 @@
     let maxPage = Number(base.searchParams.get('page'));
     let minPage = maxPage;
     for (const el of document.images) {
+      if(el.closest('[data-gpuie-motion]'))continue;
       const box = el.getBoundingClientRect();
       if (box.width < 32 || box.height < 32 ||
           box.bottom <= 0 || box.top >= innerHeight ||
@@ -672,6 +675,7 @@
     // second image's prepared result while the next/previous ranges shift.
     const base = new URL(s.origUrl, location.href);
     for (const el of document.images) {
+      if(el.closest('[data-gpuie-motion]'))continue;
       const box = el.getBoundingClientRect();
       if (box.width < 32 || box.height < 32 ||
           box.bottom <= 0 || box.top >= innerHeight ||
@@ -796,7 +800,7 @@
   document.addEventListener('fullscreenchange',fullscreenChanged);document.addEventListener('webkitfullscreenchange',fullscreenChanged);
   const KavitaPages=globalThis.__KKGR_KAVITA_PAGES__;
   let kavitaApiTimer=null,kavitaApiController=null,kavitaApiIdentity='',kavitaApiError=null,kavitaApiPlanCache=null,kavitaPlanReason=null,kavitaPlanSource=null;
-  function kavitaShownImages(){return [...document.querySelectorAll('app-manga-reader img')].filter(img=>{if(img.hasAttribute('data-gpu-reader-split-output'))return false;const r=img.getBoundingClientRect(),style=getComputedStyle(img);return r.width>=32&&r.height>=32&&r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth&&style.visibility!=='hidden'&&style.display!=='none';});}
+  function kavitaShownImages(){return [...document.querySelectorAll('app-manga-reader img')].filter(img=>{if(img.hasAttribute('data-gpu-reader-split-output')||img.closest('[data-gpuie-motion]'))return false;const r=img.getBoundingClientRect(),style=getComputedStyle(img);return r.width>=32&&r.height>=32&&r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth&&style.visibility!=='hidden'&&style.display!=='none';});}
   function kavitaGeometry(surface,layout){
     const container=surface?.closest('.image-container')||surface?.parentElement;if(!container)return null;
     const classes=container.classList,mode=classes.contains('full-height')||classes.contains('fit-to-height-double-offset')?'height':classes.contains('full-width')||classes.contains('fit-to-width-double-offset')?'width':classes.contains('original')||classes.contains('original-double-offset')?'original':null;
@@ -934,6 +938,7 @@
   // that src change, before waiting for the normal image-load/sweep pipeline.
   // Exact source, device dimensions and original aspect must all match.
   function stageKavitaPage(img) {
+    if(img.closest('[data-gpuie-motion]'))return;
     const original = img.src;
     if (!enabled) { stageDiagnostic(img,original,null,'-',null,'POWER_OFF'); return; }
     if (!readerContext()) { stageDiagnostic(img,original,null,'-',null,'READER_CONTEXT_FAIL'); return; }
@@ -2087,6 +2092,7 @@
       return;
     }
     for (const img of document.images) {
+      if(img.closest('[data-gpuie-motion]'))continue;
       const s = state.get(img);
       if (!s || !s.nw || !eligible(s)) continue;
       if (visible.has(img) || nearViewport(img)) enqueue(img);
@@ -2106,7 +2112,7 @@
     const canvasInReader=()=>document.querySelector('app-manga-reader app-canvas-renderer canvas');
     const readerRoot=()=>document.querySelector('app-manga-reader');
     const normalPage=()=>[...document.querySelectorAll('app-manga-reader img')].find(i=>{
-      if(i.hasAttribute('data-gpu-reader-split-output')) return false;
+      if(i.hasAttribute('data-gpu-reader-split-output')||i.closest('[data-gpuie-motion]')) return false;
       const r=i.getBoundingClientRect(),style=getComputedStyle(i);
       return i.isConnected && r.width>32 && r.height>32 && style.visibility!=='hidden';
     }) || null;
@@ -2375,6 +2381,7 @@
       for (const img of visible) if (!img.isConnected) visible.delete(img);
 
       for (const img of document.images) {
+        if(img.closest('[data-gpuie-motion]'))continue;
         if (img.hasAttribute("data-gpu-reader-split-output")) continue;
         if (!enabled) { restore(img); continue; }
         watchKomgaCarousel(img);
@@ -2395,6 +2402,7 @@
       if (enabled && hasReader) {
         processVisible();
         for (const img of document.images) {
+          if(img.closest('[data-gpuie-motion]'))continue;
           const s = state.get(img);
           if (s && eligible(s) && !s.busy && img.closest('.v-carousel') &&
               nearViewport(img))
@@ -2413,6 +2421,7 @@
     globalThis.__KKGR_CANCEL_ANALYSIS__?.();
     KavitaSplit.clear();
     for (const img of document.images) {
+      if(img.closest('[data-gpuie-motion]'))continue;
       const s = state.get(img);
       if (s) s.key = null;
     }
@@ -2611,7 +2620,7 @@
   let filterChangePending=false;
   function panelSnapshot() {
     const site=readerContext()?.adapter || (komgaNativeUiState()!=='NO_READER'?'Komga':'Kavita');
-    return {appVersion:platform.settings.appVersion,enabled,hud:hudVisible,hudMode:detailsVisible?'details':'normal',hudPosition:platform.settings.hudPosition||'右下',renderer:quality,
+    return {appVersion:platform.settings.appVersion,kavitaAutoFullscreen:platform.settings.kavitaAutoFullscreen===true,kavitaPageTurnAnimation:platform.settings.kavitaPageTurnAnimation===true,enabled,hud:hudVisible,hudMode:detailsVisible?'details':'normal',hudPosition:platform.settings.hudPosition||'右下',renderer:quality,
       developerMode:!!platform.settings.developerMode,diagnosticRecording:!!platform.settings.diagnosticRecording,diagnosticClearRevision:platform.settings.diagnosticClearRevision,processingMode:platform.settings.processingMode,outputFormat:platform.settings.outputFormat,blobBudgets:platform.settings.blobBudgets,decodedForward:CFG.prefetchNext,decodedBack:CFG.prefetchPrevious,processingTimeoutMs:platform.settings.processingTimeoutMs,processingRetryRevision:platform.settings.processingRetryRevision,disabledRenderers:[...disabledRenderers],rendererOrder:platform.settings.rendererOrder,filters:platform.settings.filters,filterParameters:platform.settings.filterParameters,filterCatalog:platform.settings.filterCatalog||[],filterCandidates:platform.settings.filterCandidates,rendererCatalog:globalThis.__KKGR_RENDERER_CATALOG__,candidatePolicy:globalThis.__KKGR_CANDIDATE_POLICY__,locale:globalThis.__KKGR_HOST_DISPLAY__?.read(site)?.locale || 'en',
       site,theme:globalThis.__KKGR_PANEL__?.readTheme(site),connected:true,diagnostic:window.__crispImages?.memory()};
   }
@@ -3112,6 +3121,7 @@
         getComputedStyle(img).visibility!=='hidden';
     };
     for (const img of document.images) {
+      if(img.closest('[data-gpuie-motion]'))continue;
       if (!img.closest('.v-carousel') || !shown(img)) continue;
       const recorded=state.get(img);
       const nw=recorded?.nw || img.naturalWidth;
@@ -3121,6 +3131,7 @@
       return {adapter:'Komga',img};
     }
     for (const img of document.images) {
+      if(img.closest('[data-gpuie-motion]'))continue;
       if (!shown(img)) continue;
       const original=state.get(img)?.origUrl || img.src;
       if (KavitaAdapter.getCurrentPage(original)) return {adapter:'Kavita',layout:img.closest('.webtoon-images')?'webtoon':undefined,img};
@@ -3369,6 +3380,24 @@
   }
 
   // Extension lifecycle adapter. Renderer/cache algorithms remain in the Stable Core.
+  const kavitaFullscreen=globalThis.__KKGR_KAVITA_FULLSCREEN__?.create();
+  const pageMotion=globalThis.__KKGR_KAVITA_MOTION__?.create({
+    acquire:(url,bytes)=>motionURLs.acquire(url,bytes),
+    inspect(img){
+      const s=state.get(img),source=kavitaNextUrl(img.src,0)?img.src:s?.origUrl||img.src;
+      const signature=JSON.stringify([enabled,rendererCacheKey(quality)]);
+      let url=img.currentSrc||img.src,bytes=blobs.get(url)?.bytes||0;
+      let ready=img.complete&&img.naturalWidth>0&&img.currentSrc===img.src;
+      if(enabled){
+        const id=KavitaPages?.imageIdentity(source),page=id&&KavitaPages.peek(source)?.pages?.[id.number];
+        const nw=page?.width||(s?.origUrl===source?s.nw:0),nh=page?.height||(s?.origUrl===source?s.nh:0);
+        const t=nw&&nh?targetSize(img,nw,nh):null;
+        const result=t&&completedResult(`${source}|${t.w}x${t.h}|${rendererCacheKey(quality)}`,false);
+        if(result?.url&&result.decoded){url=result.url;bytes=result.item?.bytes||0;ready=true;}
+      }
+      return {source,url,bytes,ready,signature};
+    },
+  });
   globalThis.__KKGR_CORE__ = Object.freeze({
     ids: () => RendererRegistry.ids(),
     get processingEpoch(){return rendererEpoch;},
@@ -3388,6 +3417,10 @@
       KavitaSplit.resume();
       applyingConfig = true;
       try {
+        platform.settings.kavitaAutoFullscreen=config.kavitaAutoFullscreen===true;
+        kavitaFullscreen?.configure(platform.settings.kavitaAutoFullscreen);
+        platform.settings.kavitaPageTurnAnimation=config.kavitaPageTurnAnimation===true;
+        pageMotion?.configure(platform.settings.kavitaPageTurnAnimation);
         const nextFilterSignature=JSON.stringify([config.processingMode||'worker',config.outputFormat||'png',config.processingTimeoutMs,config.processingRetryRevision,config.filters||platform.settings.filters||{},globalThis.__KKGR_PARAMETERS__?.selected(config,config.filterCatalog||platform.settings.filterCatalog||[])||{}]);
         const filterChanged=appliedFilterSignature!==nextFilterSignature;
         appliedFilterSignature=nextFilterSignature;
@@ -3422,6 +3455,8 @@
     },
     stop() {
       suspended = true;
+      kavitaFullscreen?.stop();
+      pageMotion?.stop();
       KavitaSplit.stop();
       enabled = false;
       clearKavitaAhead(); clearKomgaAhead();
@@ -3498,6 +3533,7 @@
     // succeed, and it takes a deliberate action to get here, so this cannot spin.
     if (document.visibilityState === 'visible') {
       for (const img of document.images) {
+        if(img.closest('[data-gpuie-motion]'))continue;
         const st = state.get(img);
         if (st && st.retryable) { st.retryable = false; st.key = null; }
       }

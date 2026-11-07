@@ -12,7 +12,7 @@
   const KEY='__KKGR_E2_BRIDGE__', CHANNEL='kkgr-e2-v1';
   if(globalThis[KEY]) return;
   const session=newId(), pending=new Map();
-  document.addEventListener('kkgr-dev1-open-settings',()=>chrome.runtime.sendMessage({type:'OPEN_SETTINGS_FROM_READER'}).catch(()=>{}));
+  document.addEventListener('kkgr-dev1-open-settings',()=>globalThis.__KKGR_READER_SETTINGS__?.open());
   // Share menu appearance across isolated/main worlds without changing reader processing.
   const applyAppearance=value=>{document.documentElement.setAttribute('data-kkgr-ui-appearance',['Auto','Light','Dark'].includes(value)?value:'Auto');document.dispatchEvent(new CustomEvent('kkgr-ui-appearance'));};
   chrome.storage.local.get('uiAppearance').then(v=>applyAppearance(v.uiAppearance)).catch(()=>{});
@@ -36,7 +36,7 @@
     const m=e.data,s=m?.status;if(e.source===window&&e.origin===location.origin&&m?.channel===CHANNEL&&m.from==='main'&&m.session===session&&m.type==='DIAGNOSTICS'){const p=pending.get(m.id);if(p){clearTimeout(p.timer);pending.delete(m.id);if(m.error){p.reject(Error(m.error));return;}let json;try{json=JSON.stringify(m.diagnostics);}catch{}p.resolve(json&&json.length<=5*1024*1024?JSON.parse(json):null);}return;}
     if(e.source===window && e.origin===location.origin && m?.channel===CHANNEL &&
        m.from==='main' && m.session===session && m.type==='SETTING' &&
-       ['developerMode','diagnosticRecording','diagnosticClearRevision','enabled','hud','renderer','hudMode','hudPosition','disabledRenderers','rendererCandidates','filterCandidates','filters','filterParameters','processingMode','outputFormat','blobBudgetMb','decodedForward','decodedBack','processingTimeoutMs','processingRetryRevision'].includes(m.key)) {
+       ['developerMode','diagnosticRecording','diagnosticClearRevision','enabled','hud','renderer','hudMode','hudPosition','disabledRenderers','rendererCandidates','filterCandidates','filters','filterParameters','kavitaAutoFullscreen','kavitaPageTurnAnimation','processingMode','outputFormat','blobBudgetMb','decodedForward','decodedBack','processingTimeoutMs','processingRetryRevision'].includes(m.key)) {
       chrome.runtime.sendMessage({type:'SETTING',documentToken:m.documentToken,key:m.key,value:m.value})
         .then(async result=>{if(!result?.error&&result?.config){await request('CONFIG',result.config);}if(m.changeId)window.postMessage({channel:CHANNEL,from:'bridge',session,type:'SETTING_RESULT',changeId:m.changeId,error:result?.error||null},location.origin);}).catch(error=>{if(m.changeId)window.postMessage({channel:CHANNEL,from:'bridge',session,type:'SETTING_RESULT',changeId:m.changeId,error:String(error.message||error)},location.origin);});
       return;
@@ -55,17 +55,18 @@
     if(alive) chrome.runtime.sendMessage({type:'STATUS',status}).catch(()=>{alive=false;request('STOP').catch(()=>{});});
   });
   chrome.runtime.onMessage.addListener((m,_sender,sendResponse)=>{
-    if(!['DIAGNOSTICS','REANALYZE','APPLY','STOP','PING'].includes(m?.type)) return;
+    if(!['OPEN_READER_SETTINGS','DIAGNOSTICS','REANALYZE','APPLY','STOP','PING'].includes(m?.type)) return;
     (async()=>{
+      if(m.type==='OPEN_READER_SETTINGS')return globalThis.__KKGR_READER_SETTINGS__?.open()||{ok:false};
       if(m.type==='REANALYZE')return request('REANALYZE',{stage:m.stage,filterId:m.filterId});
       if(m.type==='DIAGNOSTICS')return request('DIAGNOSTICS');
-      if(m.type==='STOP') return request('STOP');
+      if(m.type==='STOP'){globalThis.__KKGR_READER_SETTINGS__?.close();return request('STOP');}
       const config=m.type==='PING'?await chrome.runtime.sendMessage({type:'HELLO'}):m.config;
       if(config?.error) throw new Error(config.error);
       if(!config?.allowed) return request('STOP');
       await request('HELLO');
-      return request('CONFIG',{appVersion:config.appVersion,revision:config.revision,enabled:config.enabled,developerMode:config.developerMode,diagnosticRecording:config.diagnosticRecording,diagnosticClearRevision:config.diagnosticClearRevision,hud:config.hud,renderer:config.renderer,hudMode:config.hudMode,hudPosition:config.hudPosition,uiLanguage:config.uiLanguage,disabledRenderers:config.disabledRenderers,quick:config.quick,rendererOrder:config.rendererOrder,filters:config.filters,processingMode:config.processingMode,outputFormat:config.outputFormat,processingTimeoutMs:config.processingTimeoutMs,processingRetryRevision:config.processingRetryRevision,filterParameters:config.filterParameters,filterCandidates:config.filterCandidates,filterCatalog:config.filterCatalog});
-    })().then(status=>sendResponse(['DIAGNOSTICS','REANALYZE'].includes(m.type)?{ok:true,diagnostics:status}:{ok:true,status}),e=>sendResponse({ok:false,error:e.message}));
+      return request('CONFIG',{appVersion:config.appVersion,revision:config.revision,enabled:config.enabled,developerMode:config.developerMode,diagnosticRecording:config.diagnosticRecording,diagnosticClearRevision:config.diagnosticClearRevision,hud:config.hud,renderer:config.renderer,hudMode:config.hudMode,hudPosition:config.hudPosition,uiLanguage:config.uiLanguage,disabledRenderers:config.disabledRenderers,quick:config.quick,rendererOrder:config.rendererOrder,filters:config.filters,kavitaAutoFullscreen:config.kavitaAutoFullscreen,kavitaPageTurnAnimation:config.kavitaPageTurnAnimation,processingMode:config.processingMode,outputFormat:config.outputFormat,processingTimeoutMs:config.processingTimeoutMs,processingRetryRevision:config.processingRetryRevision,filterParameters:config.filterParameters,filterCandidates:config.filterCandidates,filterCatalog:config.filterCatalog});
+    })().then(status=>sendResponse(m.type==='OPEN_READER_SETTINGS'?status:['DIAGNOSTICS','REANALYZE'].includes(m.type)?{ok:true,diagnostics:status}:{ok:true,status}),e=>sendResponse({ok:false,error:e.message}));
     return true;
   });
   const boot=async()=>{
@@ -73,7 +74,7 @@
     if(config?.error) throw new Error(config.error);
     if(!config?.allowed) return;
     await request('HELLO');
-    const status=await request('CONFIG',{appVersion:config.appVersion,revision:config.revision,enabled:config.enabled,developerMode:config.developerMode,diagnosticRecording:config.diagnosticRecording,diagnosticClearRevision:config.diagnosticClearRevision,hud:config.hud,renderer:config.renderer,hudMode:config.hudMode,hudPosition:config.hudPosition,uiLanguage:config.uiLanguage,disabledRenderers:config.disabledRenderers,quick:config.quick,rendererOrder:config.rendererOrder,filters:config.filters,processingMode:config.processingMode,outputFormat:config.outputFormat,processingTimeoutMs:config.processingTimeoutMs,processingRetryRevision:config.processingRetryRevision,filterParameters:config.filterParameters,filterCandidates:config.filterCandidates,filterCatalog:config.filterCatalog});
+    const status=await request('CONFIG',{appVersion:config.appVersion,revision:config.revision,enabled:config.enabled,developerMode:config.developerMode,diagnosticRecording:config.diagnosticRecording,diagnosticClearRevision:config.diagnosticClearRevision,hud:config.hud,renderer:config.renderer,hudMode:config.hudMode,hudPosition:config.hudPosition,uiLanguage:config.uiLanguage,disabledRenderers:config.disabledRenderers,quick:config.quick,rendererOrder:config.rendererOrder,filters:config.filters,kavitaAutoFullscreen:config.kavitaAutoFullscreen,kavitaPageTurnAnimation:config.kavitaPageTurnAnimation,processingMode:config.processingMode,outputFormat:config.outputFormat,processingTimeoutMs:config.processingTimeoutMs,processingRetryRevision:config.processingRetryRevision,filterParameters:config.filterParameters,filterCandidates:config.filterCandidates,filterCatalog:config.filterCatalog});
     await chrome.runtime.sendMessage({type:'STATUS',status});
   };
   globalThis[KEY]=true;

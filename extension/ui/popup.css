@@ -11,3 +11,6 @@ body:not(.settings-page){padding:0}
 .settings-session{box-sizing:border-box;width:min(500px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:20px;border:1px solid GrayText;border-radius:8px;background:Canvas;color:CanvasText;font:inherit}.settings-session h2{font-size:18px;margin-top:0}.settings-session button,.settings-session select{display:block;width:100%;box-sizing:border-box;padding:10px;margin-top:12px;font:inherit}.settings-session::backdrop{background:#0008}.settings-session:not([open]){display:none}
 
 .settings-session button,.settings-session select{min-height:42px;border:1px solid var(--line,GrayText);border-radius:8px;background:var(--card,Canvas);color:var(--text,CanvasText)}.settings-session button{cursor:pointer}.settings-session button.primary{border-color:var(--accent,Highlight);background:var(--soft,Canvas);color:var(--accent,Highlight)}.settings-session button:hover:not(:disabled){border-color:var(--accent,Highlight)}.settings-session button:disabled{opacity:.45;cursor:default}
+
+/* Embedded settings paint over the reader; standalone settings keep their solid canvas. */
+html[data-embedded-settings],html[data-embedded-settings] body{background:transparent;color-scheme:only light}

@@ -50,10 +50,10 @@ async function managePackageInternal(m){
 
 const Sites=globalThis.__KKGR_SITES__;
 const QUICK_DEFAULT={"order": ["power", "pre", "renderer", "post", "adjust", "custom", "hud", "settings"], "visible": ["power", "pre", "renderer", "post", "adjust", "hud", "settings"], "portrait": {"pos": "右下", "dir": "横"}, "landscape": {"pos": "右下", "dir": "横"}};
-const DEFAULT={processingMode:'worker',outputFormat:'png',blobBudgets:{png:128,jpeg:64},decodedForward:4,decodedBack:4,developerMode:false,diagnosticRecording:false,diagnosticClearRevision:0,processingTimeoutMs:10000,processingRetryRevision:0,enabled:true,hud:true,renderer:'browser',hudMode:'normal',hudPosition:'右下',disabledRenderers:[],quick:QUICK_DEFAULT,revision:0,origins:[]};
+const DEFAULT={kavitaAutoFullscreen:false,kavitaPageTurnAnimation:false,processingMode:'worker',outputFormat:'png',blobBudgets:{png:128,jpeg:64},decodedForward:4,decodedBack:4,developerMode:false,diagnosticRecording:false,diagnosticClearRevision:0,processingTimeoutMs:10000,processingRetryRevision:0,enabled:true,hud:true,renderer:'browser',hudMode:'normal',hudPosition:'右下',disabledRenderers:[],quick:QUICK_DEFAULT,revision:0,origins:[]};
 let serial=Promise.resolve();
 let providerInjection=Promise.resolve();
-const config=async()=>{const rendererEntries=await rendererCatalog(),filterEntries=await filterCatalog();const stored={...DEFAULT,...(await chrome.storage.local.get('config')).config};stored.processingMode=['worker','speed'].includes(stored.processingMode)?stored.processingMode:'worker';stored.outputFormat=['png','jpeg'].includes(stored.outputFormat)?stored.outputFormat:'png';stored.blobBudgets={png:[64,128,256].includes(stored.blobBudgets?.png)?stored.blobBudgets.png:128,jpeg:[64,128,256].includes(stored.blobBudgets?.jpeg)?stored.blobBudgets.jpeg:64};for(const k of ['decodedForward','decodedBack'])stored[k]=[2,4,8].includes(stored[k])?stored[k]:4;stored.developerMode=stored.developerMode===true;stored.diagnosticRecording=stored.developerMode&&stored.diagnosticRecording===true;if(!stored.developerMode)stored.hudMode="normal";stored.processingTimeoutMs=Number.isSafeInteger(stored.processingTimeoutMs)&&stored.processingTimeoutMs>=1000&&stored.processingTimeoutMs<=60000?stored.processingTimeoutMs:10000;stored.quick={...QUICK_DEFAULT,...(stored.quick||{}),order:[...new Set([...(stored.quick?.order||QUICK_DEFAULT.order),...QUICK_DEFAULT.order])].filter(k=>QUICK_DEFAULT.order.includes(k)),visible:[...new Set(['power',...(stored.quick?.visible||QUICK_DEFAULT.visible),...(!stored.quick?.order?.includes('adjust')?['adjust']:[])])].filter(key=>key!=='custom')};stored.rendererOrder=[...new Set([...(stored.rendererOrder||[]),...RENDERER_IDS])].filter(x=>RENDERER_IDS.includes(x));stored.disabledRenderers=(stored.disabledRenderers||[]).filter(id=>RENDERER_IDS.includes(id));if(stored.renderer!=='browser'&&!RENDERER_IDS.includes(stored.renderer))stored.renderer='browser';stored.filterCandidates={pre:[],post:[],...(stored.filterCandidates||{})};stored.filters={pre:null,post:null,...(stored.filters||{})};stored.filterParameters={pre:{},post:{},...(stored.filterParameters||{})};for(const stage of ['pre','post']){const allowed=filterEntries.filter(x=>x.supportedStages.includes(stage)).map(x=>x.id);stored.filterCandidates[stage]=stored.filterCandidates[stage].filter(id=>allowed.includes(id)).slice(0,Policy.candidateLimit);if(!stored.filterCandidates[stage].includes(stored.filters[stage]))stored.filters[stage]=null;}const language=(await chrome.storage.local.get('uiLanguage')).uiLanguage;const sites=Sites.sites(stored);return {...stored,appVersion:chrome.runtime.getManifest?.().version,uiLanguage:globalThis.__KKGR_I18N__.isChoice(language)?language:'Auto',candidatePolicy:Policy,rendererCatalog:rendererEntries,filterCatalog:filterEntries,sites,origins:[...new Set(sites.map(x=>x.origin))]};};
+const config=async()=>{const rendererEntries=await rendererCatalog(),filterEntries=await filterCatalog();const stored={...DEFAULT,...(await chrome.storage.local.get('config')).config};stored.kavitaAutoFullscreen=stored.kavitaAutoFullscreen===true;stored.kavitaPageTurnAnimation=stored.kavitaPageTurnAnimation===true;stored.processingMode=['worker','speed'].includes(stored.processingMode)?stored.processingMode:'worker';stored.outputFormat=['png','jpeg'].includes(stored.outputFormat)?stored.outputFormat:'png';stored.blobBudgets={png:[64,128,256].includes(stored.blobBudgets?.png)?stored.blobBudgets.png:128,jpeg:[64,128,256].includes(stored.blobBudgets?.jpeg)?stored.blobBudgets.jpeg:64};for(const k of ['decodedForward','decodedBack'])stored[k]=[2,4,8].includes(stored[k])?stored[k]:4;stored.developerMode=stored.developerMode===true;stored.diagnosticRecording=stored.developerMode&&stored.diagnosticRecording===true;if(!stored.developerMode)stored.hudMode="normal";stored.processingTimeoutMs=Number.isSafeInteger(stored.processingTimeoutMs)&&stored.processingTimeoutMs>=1000&&stored.processingTimeoutMs<=60000?stored.processingTimeoutMs:10000;stored.quick={...QUICK_DEFAULT,...(stored.quick||{}),order:[...new Set([...(stored.quick?.order||QUICK_DEFAULT.order),...QUICK_DEFAULT.order])].filter(k=>QUICK_DEFAULT.order.includes(k)),visible:[...new Set(['power',...(stored.quick?.visible||QUICK_DEFAULT.visible),...(!stored.quick?.order?.includes('adjust')?['adjust']:[])])].filter(key=>key!=='custom')};stored.rendererOrder=[...new Set([...(stored.rendererOrder||[]),...RENDERER_IDS])].filter(x=>RENDERER_IDS.includes(x));stored.disabledRenderers=(stored.disabledRenderers||[]).filter(id=>RENDERER_IDS.includes(id));if(stored.renderer!=='browser'&&!RENDERER_IDS.includes(stored.renderer))stored.renderer='browser';stored.filterCandidates={pre:[],post:[],...(stored.filterCandidates||{})};stored.filters={pre:null,post:null,...(stored.filters||{})};stored.filterParameters={pre:{},post:{},...(stored.filterParameters||{})};for(const stage of ['pre','post']){const allowed=filterEntries.filter(x=>x.supportedStages.includes(stage)).map(x=>x.id);stored.filterCandidates[stage]=stored.filterCandidates[stage].filter(id=>allowed.includes(id)).slice(0,Policy.candidateLimit);if(!stored.filterCandidates[stage].includes(stored.filters[stage]))stored.filters[stage]=null;}const language=(await chrome.storage.local.get('uiLanguage')).uiLanguage;const sites=Sites.sites(stored);return {...stored,appVersion:chrome.runtime.getManifest?.().version,uiLanguage:globalThis.__KKGR_I18N__.isChoice(language)?language:'Auto',candidatePolicy:Policy,rendererCatalog:rendererEntries,filterCatalog:filterEntries,sites,origins:[...new Set(sites.map(x=>x.origin))]};};
 const originOf=url=>{try {const u=new URL(url);return /^https?:$/.test(u.protocol)?u.origin:null;}catch{return null;}};
 // Permissions cover host-pattern ports; exact port is enforced here and at HELLO.
 const pattern=origin=>{const u=new URL(origin);return `${u.protocol}//${u.hostname}/*`;};
@@ -75,6 +75,8 @@ async function paint(tabId,status,c,urlHint=null) {
  const tab=await chrome.tabs.get(tabId).catch(()=>null);
  if(!tab||actionPaintSequence.get(tabId)!==sequence)return;
  const registered=c.sites.some(site=>Sites.matches(site,tab.url||urlHint||''));
+ // Desktop toolbar always opens the quick menu; reader settings are explicit.
+ await chrome.action.setPopup({tabId,popup:mobileAction?'':'ui/popup.html'});
  const icon=!registered?'unregistered':c.enabled?'registered-on':'registered-off';
  const locale=await moduleLocale(),state=locale==='ja'?(!registered?'未登録サイト':c.enabled?'登録済み・ON':'登録済み・OFF'):(!registered?'Unregistered site':c.enabled?'Registered · ON':'Registered · OFF');
  if(actionPaintSequence.get(tabId)!==sequence)return;
@@ -142,15 +144,15 @@ async function hello(sender) {
   }else{await syncRuntimeModules({tabId:sender.tab.id,documentIds:[sender.documentId]});}
   const effective=await execute({target:{tabId:sender.tab.id,documentIds:[sender.documentId]},
     world:'MAIN',func:settings=>{if(settings.renderer!=='browser'&&!globalThis.__KKGR_RENDERER_CATALOG__.some(e=>e.id===settings.renderer))settings.renderer='browser';Object.assign(globalThis.__KKGR_PLATFORM__.settings,settings);return settings.renderer;},
-    args:[{developerMode:c.developerMode,diagnosticRecording:c.diagnosticRecording,diagnosticClearRevision:c.diagnosticClearRevision,hud:c.hud,renderer:c.renderer,hudMode:c.hudMode,hudPosition:c.hudPosition,uiLanguage:c.uiLanguage,disabledRenderers:c.disabledRenderers,quick:c.quick,rendererOrder:c.rendererOrder,filters:c.filters,processingMode:c.processingMode,outputFormat:c.outputFormat,blobBudgets:c.blobBudgets,decodedForward:c.decodedForward,decodedBack:c.decodedBack,processingTimeoutMs:c.processingTimeoutMs,processingRetryRevision:c.processingRetryRevision,filterParameters:c.filterParameters,filterCatalog:c.filterCatalog,revision:c.revision,filterCandidates:c.filterCandidates}]});
+    args:[{developerMode:c.developerMode,diagnosticRecording:c.diagnosticRecording,diagnosticClearRevision:c.diagnosticClearRevision,hud:c.hud,renderer:c.renderer,hudMode:c.hudMode,hudPosition:c.hudPosition,uiLanguage:c.uiLanguage,disabledRenderers:c.disabledRenderers,quick:c.quick,rendererOrder:c.rendererOrder,filters:c.filters,kavitaAutoFullscreen:c.kavitaAutoFullscreen,kavitaPageTurnAnimation:c.kavitaPageTurnAnimation,processingMode:c.processingMode,outputFormat:c.outputFormat,blobBudgets:c.blobBudgets,decodedForward:c.decodedForward,decodedBack:c.decodedBack,processingTimeoutMs:c.processingTimeoutMs,processingRetryRevision:c.processingRetryRevision,filterParameters:c.filterParameters,filterCatalog:c.filterCatalog,revision:c.revision,filterCandidates:c.filterCandidates}]});
   c.renderer=effective[0]?.result||'browser';
   await execute({target:{tabId:sender.tab.id,documentIds:[sender.documentId]},
-    world:'MAIN',files:['ui/package-metadata.js','ui/parameter-editor.js','ui/candidate-policy.js','ui/i18n.js','ui/diagnostics-view.js','ui/panel.js','ui/komga-pages.js','ui/kavita-pages.js','ui/cache-state.js','ui/hud-model.js','ui/host-display.js','content/reader-core.js']});
+    world:'MAIN',files:['ui/package-metadata.js','ui/parameter-editor.js','ui/candidate-policy.js','ui/i18n.js','ui/diagnostics-view.js','ui/panel.js','ui/komga-pages.js','ui/kavita-pages.js','ui/cache-state.js','ui/hud-model.js','ui/host-display.js','content/kavita-page-motion.js','content/kavita-fullscreen.js','content/reader-core.js']});
   });
   await providerInjection;
   const key=`tab:${sender.tab.id}`,old=(await chrome.storage.session.get(key))[key];
   if(old?.documentId!==sender.documentId) await chrome.storage.session.set({[key]:{documentId:sender.documentId,status:null,diagnostic:null}});
-  return {allowed:true,enabled:c.enabled,developerMode:c.developerMode,diagnosticRecording:c.diagnosticRecording,diagnosticClearRevision:c.diagnosticClearRevision,hud:c.hud,renderer:c.renderer,hudMode:c.hudMode,hudPosition:c.hudPosition,uiLanguage:c.uiLanguage,disabledRenderers:c.disabledRenderers,quick:c.quick,rendererOrder:c.rendererOrder,filterCandidates:c.filterCandidates,filters:c.filters,processingMode:c.processingMode,outputFormat:c.outputFormat,blobBudgets:c.blobBudgets,decodedForward:c.decodedForward,decodedBack:c.decodedBack,processingTimeoutMs:c.processingTimeoutMs,processingRetryRevision:c.processingRetryRevision,filterParameters:c.filterParameters,filterCatalog:c.filterCatalog,revision:c.revision};
+  return {allowed:true,enabled:c.enabled,developerMode:c.developerMode,diagnosticRecording:c.diagnosticRecording,diagnosticClearRevision:c.diagnosticClearRevision,hud:c.hud,renderer:c.renderer,hudMode:c.hudMode,hudPosition:c.hudPosition,uiLanguage:c.uiLanguage,disabledRenderers:c.disabledRenderers,quick:c.quick,rendererOrder:c.rendererOrder,filterCandidates:c.filterCandidates,filters:c.filters,kavitaAutoFullscreen:c.kavitaAutoFullscreen,kavitaPageTurnAnimation:c.kavitaPageTurnAnimation,processingMode:c.processingMode,outputFormat:c.outputFormat,blobBudgets:c.blobBudgets,decodedForward:c.decodedForward,decodedBack:c.decodedBack,processingTimeoutMs:c.processingTimeoutMs,processingRetryRevision:c.processingRetryRevision,filterParameters:c.filterParameters,filterCatalog:c.filterCatalog,revision:c.revision};
 }
 // Use the HELLO-established document identity; never accept a popup-supplied identity.
 async function syncRuntimeModules(target){
@@ -221,7 +223,7 @@ async function connectTab(tab) {
   const c=await config();
   if(!await permitted(c,tab.url)) return;
   try {
-    await withDeadline(chrome.scripting.executeScript({target:{tabId:tab.id},world:'ISOLATED',files:['modules/catalog.js','content/bridge.js']}));
+    await withDeadline(chrome.scripting.executeScript({target:{tabId:tab.id},world:'ISOLATED',files:['modules/catalog.js','content/reader-settings.js','content/bridge.js']}));
     await pingTab(tab);
   } catch(e) {await storeStatus({tab,frameId:0},null,'CONNECT: '+cleanError(e));}
 }
@@ -233,7 +235,7 @@ async function reconcile(targetTabId=null) {
   if(scripts.length) await chrome.scripting.unregisterContentScripts({ids:scripts.map(s=>s.id)});
   const matches=[...new Set(origins.map(pattern))];
   if(matches.length) await chrome.scripting.registerContentScripts([{id:'kkgr-e2-bridge',
-    matches,js:['modules/catalog.js','content/bridge.js'],world:'ISOLATED',runAt:'document_idle',allFrames:false,persistAcrossSessions:true}]);
+    matches,js:['modules/catalog.js','content/reader-settings.js','content/bridge.js'],world:'ISOLATED',runAt:'document_idle',allFrames:false,persistAcrossSessions:true}]);
   const tabs=await chrome.tabs.query({});
   tabs.sort((a,b)=>(b.id===targetTabId)-(a.id===targetTabId));
   for(const tab of tabs) {
@@ -323,6 +325,8 @@ async function ui(m) {
   }
   const c=await config();
   if(m.type==='SET_ENABLED' && typeof m.enabled==='boolean') c.enabled=m.enabled;
+  else if(m.type==='SET_KAVITA_AUTO_FULLSCREEN'){if(typeof m.kavitaAutoFullscreen!=='boolean')throw Error('Invalid Kavita fullscreen setting');c.kavitaAutoFullscreen=m.kavitaAutoFullscreen;}
+  else if(m.type==='SET_KAVITA_PAGE_TURN_ANIMATION'){if(typeof m.kavitaPageTurnAnimation!=='boolean')throw Error('Invalid Kavita animation setting');c.kavitaPageTurnAnimation=m.kavitaPageTurnAnimation;}
   else if(m.type==='SET_PROCESSING_MODE'){if(!['worker','speed'].includes(m.processingMode))throw Error('Invalid processing mode');c.processingMode=m.processingMode;}
   else if(m.type==='SET_OUTPUT_FORMAT'){if(!['png','jpeg'].includes(m.outputFormat))throw Error('Invalid output format');c.outputFormat=m.outputFormat;}
   else if(m.type==='SET_BLOB_BUDGET'){if(![64,128,256].includes(m.blobBudgetMb))throw Error('Invalid Blob budget');c.blobBudgets={...c.blobBudgets,[c.outputFormat]:m.blobBudgetMb};}
@@ -352,11 +356,20 @@ async function ui(m) {
 chrome.runtime.onMessage.addListener((m,sender,sendResponse)=>{
   // Android browsers may open the action UI as an extension tab.
   const senderPage=typeof sender.url==='string'?sender.url.split(/[?#]/)[0]:'';
+  const isEmbedded=senderPage===chrome.runtime.getURL('ui/embedded-settings.html') && sender.id===chrome.runtime.id;
   const isUI=[chrome.runtime.getURL('ui/popup.html'),chrome.runtime.getURL('ui/settings.html')].includes(senderPage) &&
     (!sender.id || sender.id===chrome.runtime.id);
   const task=async()=>{
+    if(isEmbedded){
+      const context=await validateEmbeddedSettings(m,sender);
+      if(m.type==='EMBEDDED_CONTEXT')return {ok:true,targetTabId:context.tabId,parentOrigin:new URL(context.parentURL).origin};
+      if(['OPEN_SETTINGS','REGISTER_SETTINGS_TAB','LAUNCH_CONTEXT','FOCUS_READER'].includes(m.type))throw Error('Unsupported embedded command');
+      return ui({...m,targetTabId:context.tabId});
+    }
     if(isUI){const mutating=/^SET_/.test(m.type)||['ADD_PACKAGE','UPDATE_PACKAGE','DELETE_PACKAGE','SAVE_SITE','DELETE_SITE','PREPARE_SITE','RECONNECT','FOCUS_READER','REANALYZE_FILTER'].includes(m.type);if(senderPage===chrome.runtime.getURL('ui/settings.html')&&settingsTabs&&mutating)return settingsTabs.run(m,sender,()=>ui(m));return ui(m);}
     if(!sender.tab || sender.frameId!==0) throw new Error('Unsupported sender');
+    if(m.type==='PREPARE_EMBEDDED_SETTINGS')return prepareEmbeddedSettings(sender);
+    if(m.type==='CLOSE_EMBEDDED_SETTINGS'){const key='embeddedSettings:'+sender.tab.id,context=(await chrome.storage.session.get(key))[key];if(context?.parentDocumentId===sender.documentId&&context.token===m.token)await chrome.storage.session.remove(key);return {ok:true};}
     if(m.type==='HELLO') return hello(sender);
     if(m.type==='OPEN_SETTINGS_FROM_READER'){if(!await permitted(await config(),sender.url))throw Error('Site permission missing');return openSettingsTab(sender.tab.id,(await config()).sites.length?'':'sites');}
     if(m.type==='SETTING') {
@@ -366,6 +379,8 @@ chrome.runtime.onMessage.addListener((m,sender,sendResponse)=>{
       if(['enabled','hud'].includes(m.key) && typeof m.value==='boolean')
         return ui({type:m.key==='enabled'?'SET_ENABLED':'SET_HUD',[m.key]:m.value,targetTabId:sender.tab.id});
       if(['developerMode','diagnosticRecording','diagnosticClearRevision'].includes(m.key))return ui({type:{developerMode:'SET_DEVELOPER_MODE',diagnosticRecording:'SET_DIAGNOSTIC_RECORDING',diagnosticClearRevision:'SET_DIAGNOSTIC_CLEAR'}[m.key],[m.key]:m.value,targetTabId:sender.tab.id});
+       if(m.key==='kavitaAutoFullscreen')return ui({type:'SET_KAVITA_AUTO_FULLSCREEN',kavitaAutoFullscreen:m.value,targetTabId:sender.tab.id});
+       if(m.key==='kavitaPageTurnAnimation')return ui({type:'SET_KAVITA_PAGE_TURN_ANIMATION',kavitaPageTurnAnimation:m.value,targetTabId:sender.tab.id});
        if(m.key==='processingMode')return ui({type:'SET_PROCESSING_MODE',processingMode:m.value,targetTabId:sender.tab.id});
         if(m.key==='blobBudgetMb')return ui({type:'SET_BLOB_BUDGET',blobBudgetMb:m.value,targetTabId:sender.tab.id});if(m.key==='decodedForward'||m.key==='decodedBack')return ui({type:m.key==='decodedForward'?'SET_DECODED_FORWARD':'SET_DECODED_BACK',[m.key]:m.value,targetTabId:sender.tab.id});
         if(m.key==='outputFormat')return ui({type:'SET_OUTPUT_FORMAT',outputFormat:m.value,targetTabId:sender.tab.id});
@@ -393,14 +408,14 @@ chrome.runtime.onMessage.addListener((m,sender,sendResponse)=>{
     throw new Error('Unsupported content command');
   };
   // Serialize only UI mutations. HELLO/STATUS must run while reconcile awaits a bridge.
-  const result=((isUI && !['GET_DIAGNOSTICS','REANALYZE_FILTER','GET','GET_SAVED','PACKAGE_STATE','RECONNECT','FOCUS_READER','REANALYZE_FILTER'].includes(m.type)) || m.type==='SETTING')?(serial=serial.catch(()=>{}).then(task)):task();
+  const result=(((isUI||isEmbedded) && !['GET_DIAGNOSTICS','REANALYZE_FILTER','GET','GET_SAVED','PACKAGE_STATE','RECONNECT','FOCUS_READER','REANALYZE_FILTER'].includes(m.type)) || m.type==='SETTING')?(serial=serial.catch(()=>{}).then(task)):task();
   result.then(v=>sendResponse(v),e=>sendResponse({error:cleanError(e)}));return true;
 });
 chrome.runtime.onInstalled.addListener(()=>{serial=serial.catch(()=>{}).then(reconcile);});
 chrome.runtime.onStartup.addListener(()=>{serial=serial.catch(()=>{}).then(reconcile);});
 chrome.permissions.onAdded.addListener(()=>{serial=serial.catch(()=>{}).then(finishPendingOrigins);});
 chrome.permissions.onRemoved.addListener(()=>{serial=serial.catch(()=>{}).then(reconcile);});
-chrome.tabs.onRemoved.addListener(id=>{chrome.storage.session.remove(`tab:${id}`);actionPaintSequence.delete(id);});
+chrome.tabs.onRemoved.addListener(id=>{chrome.storage.session.remove(`tab:${id}`);chrome.storage.session.remove('embeddedSettings:'+id);actionPaintSequence.delete(id);});
 chrome.tabs.onUpdated.addListener((id,change,tab)=>{
   // A late loading notification must not erase a new document's HELLO/status.
   // HELLO replaces the previous identity. GET actively probes before showing status.
@@ -412,13 +427,22 @@ chrome.tabs.onUpdated.addListener((id,change,tab)=>{
 
 // DEV2 routing: site registration is separate from reader processing.
 const mobileAction=!!navigator.userAgentData?.mobile || /Android|iPhone|iPad/i.test(navigator.userAgent||'');
-async function configureAction(){await chrome.action.setPopup({popup:mobileAction?'':'ui/popup.html'});}
+async function configureAction(tabId){await chrome.action.setPopup({...(Number.isSafeInteger(tabId)?{tabId}:{}),popup:mobileAction?'':'ui/popup.html'});}
 configureAction().catch(()=>{});
 chrome.runtime.onInstalled.addListener(()=>configureAction().catch(()=>{}));
 chrome.runtime.onStartup.addListener(()=>{chrome.storage.local.remove('dev1SettingsTabId');configureAction().catch(()=>{});});
 chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&changes.config)configureAction().catch(()=>{});});
 let openingSettings;
+async function tryReaderSettings(targetTabId){
+ if(!Number.isSafeInteger(targetTabId))return false;
+ const tab=await chrome.tabs.get(targetTabId).catch(()=>null),c=await config();
+ if(!tab||!await permitted(c,tab.url)||!c.sites.some(site=>Sites.reader(site,tab.url)))return false;
+ try{let response=await chrome.tabs.sendMessage(tab.id,{type:'OPEN_READER_SETTINGS'},{frameId:0});if(response?.ok)return true;}catch{}
+ await connectTab(tab);
+ try{return (await chrome.tabs.sendMessage(tab.id,{type:'OPEN_READER_SETTINGS'},{frameId:0}))?.ok===true;}catch{return false;}
+}
 async function openSettingsTab(targetTabId=null,section='',mobileRoute=false){
+ if(await tryReaderSettings(targetTabId))return {ok:true,embedded:true};
  const base=chrome.runtime.getURL('ui/settings.html');
  let target=null;if(Number.isSafeInteger(targetTabId))try{target=await chrome.tabs.get(targetTabId);}catch{}
  if(mobileRoute&&target){const savedSelf=(await chrome.storage.local.get('dev1SettingsTabId')).dev1SettingsTabId;if(target.url?.split(/[?#]/)[0]===base||settingsTabs?.isSettings(target.id)||(!target.url&&target.id===savedSelf)){await chrome.storage.local.set({dev1SettingsTabId:target.id});return {ok:true,settingsTabId:target.id,unchanged:true};}}
@@ -434,5 +458,25 @@ async function openSettingsTab(targetTabId=null,section='',mobileRoute=false){
  await chrome.storage.local.set({dev1SettingsTabId:tab.id});context.settingsTabId=tab.id;await chrome.storage.session.set({dev2Launch:context});return {ok:true,settingsTabId:tab.id};
 }
 async function readerTabs(){const c=await config(),all=await chrome.tabs.query({}),result=[];for(const tab of all){if(!await permitted(c,tab.url)||!c.sites.some(site=>Sites.reader(site,tab.url)))continue;const u=new URL(tab.url);result.push({id:tab.id,windowId:tab.windowId,title:tab.title||u.pathname,site:u.origin});}return result;}
-chrome.action.onClicked.addListener(tab=>{if(!openingSettings)openingSettings=(async()=>{const c=await config();if(mobileAction)await openSettingsTab(tab?.id,'',true);else{await configureAction();try{await chrome.action.openPopup();}catch{await openSettingsTab(tab?.id);}}})().catch(()=>{}).finally(()=>openingSettings=null);});
+chrome.action.onClicked.addListener(tab=>{if(!openingSettings)openingSettings=(async()=>{if(mobileAction)await openSettingsTab(tab?.id,'',true);else{await configureAction(tab?.id);try{await chrome.action.openPopup();}catch{await openSettingsTab(tab?.id);}}})().catch(()=>{}).finally(()=>openingSettings=null);});
 chrome.tabs.onRemoved.addListener(async id=>{const saved=await chrome.storage.local.get('dev1SettingsTabId');if(saved.dev1SettingsTabId===id)await chrome.storage.local.remove('dev1SettingsTabId');});
+
+// Embedded settings retain extension APIs, but are bound to one permitted reader document.
+async function prepareEmbeddedSettings(sender){
+ const c=await config(),tab=await chrome.tabs.get(sender.tab.id);
+ // Sender URL may describe the original document after a same-document SPA navigation.
+ // Use the live tab URL for reader routing; retain origin and document/frame checks.
+ if(!sender.documentId||originOf(sender.url)!==originOf(tab.url)||!await permitted(c,tab.url)||!c.sites.some(site=>Sites.reader(site,tab.url)))throw Error('Reader document unavailable');
+ const token=crypto.randomUUID(),key='embeddedSettings:'+sender.tab.id;
+ await chrome.storage.session.set({[key]:{token,tabId:sender.tab.id,parentDocumentId:sender.documentId,parentURL:tab.url,created:Date.now()}});
+ return {ok:true,url:chrome.runtime.getURL('ui/embedded-settings.html')+'?embedded='+encodeURIComponent(token),token};
+}
+async function validateEmbeddedSettings(m,sender){
+ if(!sender.tab||!sender.frameId||!sender.documentId)throw Error('Embedded settings require a child frame');
+ const key='embeddedSettings:'+sender.tab.id,context=(await chrome.storage.session.get(key))[key],entry=(await chrome.storage.session.get('tab:'+sender.tab.id))['tab:'+sender.tab.id];
+ const tab=await chrome.tabs.get(sender.tab.id),c=await config();
+ if(!context||context.token!==m.embeddedToken||entry?.documentId!==context.parentDocumentId||!await permitted(c,tab.url)||!c.sites.some(site=>Sites.reader(site,tab.url))||new URL(tab.url).pathname!==new URL(context.parentURL).pathname)throw Error('Embedded settings document unavailable');
+ if(context.documentId&&(context.documentId!==sender.documentId||context.frameId!==sender.frameId))throw Error('Embedded settings frame changed');
+ if(!context.documentId){if(Date.now()-context.created>15000)throw Error('Embedded settings launch expired');context.documentId=sender.documentId;context.frameId=sender.frameId;await chrome.storage.session.set({[key]:context});}
+ return context;
+}

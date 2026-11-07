@@ -6,15 +6,27 @@
 
 Kavita & Komga GPU Image Enhancer (GPUIE) is a browser extension for Kavita and Komga. Choose resizing methods such as LoHalo Jr. and NoHalo Jr., and combine them with filters before and after resizing, bringing advanced image-quality controls to your browser-based comic reader. It lets you adjust how comics look while keeping the site's layout and reading controls as much as possible.
 
-The current extension version is **0.9.5 beta**. The public module API is **1.0**.
+The current extension version is **0.9.6 beta**. The public module API is **1.0**.
 
 <img src="site/assets/guide/komga-interface.png" width="760" alt="GPUIE menu and quick controls in the Komga reader">
 
 Open Komga’s reading menu to show the image-quality quick controls. This screenshot also uses the optional Paper Restoration module.
 
+## New in 0.9.6 beta
+
+- **Kavita page transitions**: Horizontal slides for single pages, double pages and manga spreads, including both reading directions and fullscreen.
+- **Open Kavita Reader in Fullscreen**: Attempts fullscreen when entering the reader. If the browser blocks automatic entry, use Kavita’s fullscreen button.
+- **Detailed settings inside the reader**: Open settings from the reader’s quick controls and choose **Return to reader** to resume the same page. The desktop toolbar icon keeps its existing quick menu. On Android, the toolbar icon opens detailed settings directly while reading.
+
+The two optional Kavita features are under **Detailed settings → Options → Basic settings**. Both default to OFF, apply across registered Kavita servers, and do not affect Komga.
+Transitions are skipped for vertical scrolling, Webtoon, split images and other unsupported modes, reduced motion, or an unknown reading direction.
+
+On desktop and Android, settings use a centered panel (up to 820×680 CSS px) at viewport widths of 600 CSS px or more, and fill narrower screens. The panel follows rotation and Fold resizing. Closing settings preserves reader fullscreen.
+This release uses a new public signing key and extension ID. Install it as a separate extension from older public and test builds, register sites and configure settings again, and avoid enabling both builds together. Reload open reader tabs after installation.
+
 ## Get started
 
-1. **Install the extension.** Download the extension ZIP from the [Release page](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta), extract it, and load it in Chrome. [Installation steps](#download-and-installation)
+1. **Install the extension.** Download the extension ZIP from the [Release page](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.6-beta), extract it, and load it in Chrome. [Installation steps](#download-and-installation)
 2. **Register your reading site.** Open your Kavita or Komga tab, register it from the extension menu, and grant site access. [First-time setup](#first-time-setup)
 3. **Select LoHalo Jr. and start reading.** Use the renderer quick control in the reader to switch methods and compare the results. Browser is selected by default. [Basic use](#basic-use)
 
@@ -95,7 +107,7 @@ Komga's new GUI has not been tested.
 
 GPU processing requires features including WebGL2. The extension specifies Chrome 135 as its minimum version. Android requires a browser that can install extensions from CRX files.
 
-## [Download and installation](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta)
+## [Download and installation](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.6-beta)
 
 | Package | Purpose |
 | --- | --- |
@@ -105,11 +117,11 @@ GPU processing requires features including WebGL2. The extension specifies Chrom
 
 Additional modules are optional. LoHalo Jr., NoHalo Jr., and GPU Unsharp Mask are built in.
 
-The official repository is [Kavita-Komga-GPU-Image-Enhancer](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer). Download the extension ZIP, CRX, and optional module pack from the [Release page](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta).
+The official repository is [Kavita-Komga-GPU-Image-Enhancer](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer). Download the extension ZIP, CRX, and optional module pack from the [Release page](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.6-beta).
 
 ### PC: Chrome
 
-1. Download the extension ZIP from the [Release page](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.5-beta) and extract it.
+1. Download the extension ZIP from the [Release page](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.6-beta) and extract it.
 2. Open Chrome's extension management page.
 3. Enable Developer mode.
 4. Select **Load unpacked**, then choose the folder containing `manifest.json`.
@@ -187,11 +199,13 @@ Read the module author's instructions and cautions in its Info panel.
 
 ### Return to reading from detailed settings
 
-When opened from a reading tab, the top-left back control returns to that tab and closes the settings tab. When opened independently, it becomes a close control. Unapplied edits trigger a confirmation.
+While reading, quick controls open detailed settings over the same reader page. The desktop toolbar icon first opens its quick menu, where you can select detailed settings. On Android, the toolbar icon opens detailed settings directly while reading. Choose **Return to reader** at the top left to close the panel and resume the same page. Reader fullscreen is preserved.
+
+If the reader connection fails, or settings are opened outside a reader, the existing settings tab is used. Its back control returns to the original reader tab and closes settings; independently opened settings have a close control. Unapplied edits trigger a confirmation.
 
 ### Change the language
 
-Choose Japanese, English, or Automatic. Automatic follows the browser language and uses English for unsupported languages. Confirming and saving a language change reloads the settings tab.
+Choose Japanese, English, or Automatic. Automatic follows the browser language and uses English for unsupported languages. Confirming and saving a language change reloads only the settings UI, leaving the reader page in place.
 
 External modules use their own translations. Items without a translation for the selected language fall back to English.
 

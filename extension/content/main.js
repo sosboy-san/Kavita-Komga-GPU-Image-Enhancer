@@ -18,7 +18,7 @@
   Object.defineProperty(globalThis,'__KKGR_PLATFORM__',{value:{settings,
     change(key,value) {
       if(!session) return;
-      if(['processingMode','outputFormat','filters','filterParameters','developerMode','diagnosticRecording','diagnosticClearRevision','hudMode'].includes(key))return new Promise((resolve,reject)=>{const changeId=newId(),timer=setTimeout(()=>{changes.delete(changeId);reject(Error('Filter change timed out'));},12000);changes.set(changeId,{resolve,reject,timer});window.postMessage({channel:CHANNEL,from:'main',session,type:'SETTING',documentToken,key,value,changeId},location.origin);});
+      if(['kavitaAutoFullscreen','kavitaPageTurnAnimation','processingMode','outputFormat','filters','filterParameters','developerMode','diagnosticRecording','diagnosticClearRevision','hudMode'].includes(key))return new Promise((resolve,reject)=>{const changeId=newId(),timer=setTimeout(()=>{changes.delete(changeId);reject(Error('Filter change timed out'));},12000);changes.set(changeId,{resolve,reject,timer});window.postMessage({channel:CHANNEL,from:'main',session,type:'SETTING',documentToken,key,value,changeId},location.origin);});
       window.postMessage({channel:CHANNEL,from:'main',session,type:'SETTING',
         documentToken,key,value},location.origin);
     }},configurable:false});
@@ -43,7 +43,7 @@
     if(m.type!=='CONFIG' || !Number.isSafeInteger(m.revision) || m.revision<revision ||
        typeof m.enabled!=='boolean') return;
     revision=m.revision;
-    Object.assign(settings,{appVersion:m.appVersion,revision:m.revision,enabled:m.enabled,developerMode:m.developerMode,diagnosticRecording:m.diagnosticRecording,diagnosticClearRevision:m.diagnosticClearRevision,hud:m.hud,renderer:m.renderer,hudMode:m.hudMode,hudPosition:m.hudPosition,uiLanguage:m.uiLanguage,disabledRenderers:m.disabledRenderers,quick:m.quick,rendererOrder:m.rendererOrder,filters:m.filters,processingMode:m.processingMode,outputFormat:m.outputFormat,processingTimeoutMs:m.processingTimeoutMs,processingRetryRevision:m.processingRetryRevision,filterParameters:m.filterParameters,filterCandidates:m.filterCandidates,filterCatalog:m.filterCatalog});
+    Object.assign(settings,{appVersion:m.appVersion,revision:m.revision,enabled:m.enabled,developerMode:m.developerMode,diagnosticRecording:m.diagnosticRecording,diagnosticClearRevision:m.diagnosticClearRevision,hud:m.hud,renderer:m.renderer,hudMode:m.hudMode,hudPosition:m.hudPosition,uiLanguage:m.uiLanguage,disabledRenderers:m.disabledRenderers,quick:m.quick,rendererOrder:m.rendererOrder,filters:m.filters,kavitaAutoFullscreen:m.kavitaAutoFullscreen===true,kavitaPageTurnAnimation:m.kavitaPageTurnAnimation===true,processingMode:m.processingMode,outputFormat:m.outputFormat,processingTimeoutMs:m.processingTimeoutMs,processingRetryRevision:m.processingRetryRevision,filterParameters:m.filterParameters,filterCandidates:m.filterCandidates,filterCatalog:m.filterCatalog});
     globalThis.__KKGR_CORE__?.apply(settings);
     if(m.enabled!==enabled) {
       enabled=m.enabled;
