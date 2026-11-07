@@ -8,7 +8,7 @@
  function connect(){if(session)return Promise.resolve(session);if(connecting)return connecting;
   connecting=new Promise((resolve,reject)=>{const channel=new MessageChannel(),request='processing-'+(++counter),timer=setTimeout(()=>{channel.port1.close();reject(fail('WORKER_UNAVAILABLE','Processing worker unavailable'));},5000);
    channel.port1.onmessage=e=>{if(e.data?.type==='CONNECTED'){clearTimeout(timer);session=channel.port1;session.onmessage=onMessage;resolve(session);}else if(e.data?.error){clearTimeout(timer);reject(fail(e.data.error.code,e.data.error.message));}};channel.port1.start();
-   window.postMessage({channel:'kkgr-processing-connect',request},location.origin,[channel.port2]);
+   window.postMessage({channel:'kkgr-processing-connect',request,session:globalThis.__KKGR_PLATFORM__?.processingSession?.()},location.origin,[channel.port2]);
   }).finally(()=>{connecting=null;});return connecting;
  }
  function onMessage(e){const m=e.data;if(m.error&&!m.id){for(const p of pending.values()){clearTimeout(p.timer);p.reject(fail(m.error.code,m.error.message));}pending.clear();close();return;}const p=pending.get(m.id);if(!p)return;if(m.type==='DIAGNOSTIC'){globalThis.__KKGR_DIAGNOSTICS__?.event(p.token,m.event);return;}if(m.type==='PHASE'){globalThis.__KKGR_DIAGNOSTICS__?.event(p.token,{stage:m.stage,module:m.module,parameters:p.parameters?.[m.stage],action:m.action});p.phase={stage:m.stage,module:m.module,action:m.action};lastPhase=p.phase;if(m.stage==='encode'){clearTimeout(p.timer);p.timer=setTimeout(()=>{pending.delete(m.id);close();p.reject(fail('ENCODE_TIMEOUT','Image encoding exceeded 30 seconds'));},30000);}return;}
@@ -54,6 +54,6 @@
   }catch(e){D?.event(token,{timings:{processingTotalMs:performance.now()-context.queuedAt}});D?.finish(token,e.code==='ANALYSIS_CANCELLED'?'cancelled':'failed',null,e);throw e;}
  }
  const start=(...args)=>{const jobGeneration=generation,context={...(args[9]||{}),queuedAt:performance.now(),id:'job-'+(++counter)};args.length=9;args[7]=JSON.parse(JSON.stringify(args[7]||{}));args[8]=!!args[8];context.token=globalThis.__KKGR_DIAGNOSTICS__?.begin(context.id,args[1]?.currentSrc||args[1]?.src||args[1],[args[2],args[3]],[args[4],args[5]],args[7],context.role);globalThis.__KKGR_DIAGNOSTICS__?.sourceTiming(context.token,args[1]);globalThis.__KKGR_DIAGNOSTICS__?.event(context.token,{mimeType:args[6]});const job=serial.catch(()=>{}).then(()=>execute(...args,jobGeneration,context));serial=job;return job;};
- globalThis.__KKGR_PROCESSING__=Object.freeze({moduleRuntimeVersion:2,start,cancelAll,retry(){failures.clear();cancelAll();},diagnostics:()=>({failures:failures.size,phase:lastPhase})});
+ globalThis.__KKGR_PROCESSING__=Object.freeze({moduleRuntimeVersion:3,start,cancelAll,retry(){failures.clear();cancelAll();},diagnostics:()=>({failures:failures.size,phase:lastPhase})});
  globalThis.addEventListener?.('pagehide',cancelAll);
 })();
