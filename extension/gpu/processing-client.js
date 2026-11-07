@@ -17,12 +17,19 @@
  }
  async function execute(provider,source,sw,sh,dw,dh,type,settings,_reserved=false,jobGeneration=generation,context={}){
   const D=globalThis.__KKGR_DIAGNOSTICS__,token=context.token,entered=performance.now();D?.event(token,{timings:{queueMs:entered-context.queuedAt}});try{
+  if(jobGeneration!==generation)throw fail('ANALYSIS_CANCELLED','Job cancelled');
   const snapshot=JSON.parse(JSON.stringify(settings||{})),timeoutMs=snapshot.processingTimeoutMs||10000,mode=snapshot.processingMode==='speed'?'speed':'worker';
   const slots=snapshot.filters||{},useRenderer=provider!=='browser'&&(sw!==dw||sh!==dh),builtin={lohalo:'lohalo-jr',nohalo:'nohalo-jr'};
   const plan={pre:slots.pre||null,renderer:useRenderer?(builtin[provider]||provider):null,post:slots.post||null};
   const packages=[...new Set([plan.pre,plan.renderer,plan.post].filter(Boolean))].map(id=>globalThis.__KKGR_PACKAGE_SOURCES__?.[id]).filter(Boolean);
-  const runtime=globalThis.__KKGR_MODULE_RUNTIME__;
-  if(runtime&&(!runtime.ready||runtime.mode!==mode))throw fail('MODULE_RUNTIME_UNAVAILABLE',runtime.errors?.[0]?.message||'Module runtime is not ready');
+  let runtime=globalThis.__KKGR_MODULE_RUNTIME__;
+  if(runtime&&!runtime.ready&&!runtime.errors?.length&&globalThis.__KKGR_PLATFORM__?.ensureModuleRuntime){
+   await globalThis.__KKGR_PLATFORM__.ensureModuleRuntime();runtime=globalThis.__KKGR_MODULE_RUNTIME__;
+   if(jobGeneration!==generation||(runtime&&!runtime.ready&&!runtime.errors?.length))throw fail('ANALYSIS_CANCELLED','Module preparation pending');
+  }
+  const selected=runtime?.slots,selectionChanged=selected&&((snapshot.renderer!==undefined&&snapshot.renderer!==selected.renderer)||(slots.pre||null)!==selected.pre||(slots.post||null)!==selected.post);
+  if(runtime&&(runtime.mode!==mode||selectionChanged))throw fail('ANALYSIS_CANCELLED','Module selection changed');
+  if(runtime&&!runtime.ready)throw fail('MODULE_RUNTIME_UNAVAILABLE',runtime.errors?.[0]?.message||'Module runtime is not ready');
   if(packages.length&&!runtime)throw fail('MODULE_RUNTIME_UNAVAILABLE','Module selection is not initialized');
   if(runtime?.needsUserScripts){
    const authorize=globalThis.__KKGR_PLATFORM__?.authorizeModules;if(!authorize)throw fail('MODULE_ACCESS_REVOKED','Module authorization bridge unavailable');
@@ -54,6 +61,6 @@
   }catch(e){D?.event(token,{timings:{processingTotalMs:performance.now()-context.queuedAt}});D?.finish(token,e.code==='ANALYSIS_CANCELLED'?'cancelled':'failed',null,e);throw e;}
  }
  const start=(...args)=>{const jobGeneration=generation,context={...(args[9]||{}),queuedAt:performance.now(),id:'job-'+(++counter)};args.length=9;args[7]=JSON.parse(JSON.stringify(args[7]||{}));args[8]=!!args[8];context.token=globalThis.__KKGR_DIAGNOSTICS__?.begin(context.id,args[1]?.currentSrc||args[1]?.src||args[1],[args[2],args[3]],[args[4],args[5]],args[7],context.role);globalThis.__KKGR_DIAGNOSTICS__?.sourceTiming(context.token,args[1]);globalThis.__KKGR_DIAGNOSTICS__?.event(context.token,{mimeType:args[6]});const job=serial.catch(()=>{}).then(()=>execute(...args,jobGeneration,context));serial=job;return job;};
- globalThis.__KKGR_PROCESSING__=Object.freeze({moduleRuntimeVersion:3,start,cancelAll,retry(){failures.clear();cancelAll();},diagnostics:()=>({failures:failures.size,phase:lastPhase})});
+ globalThis.__KKGR_PROCESSING__=Object.freeze({moduleRuntimeVersion:4,start,cancelAll,retry(){failures.clear();cancelAll();},diagnostics:()=>({failures:failures.size,phase:lastPhase})});
  globalThis.addEventListener?.('pagehide',cancelAll);
 })();

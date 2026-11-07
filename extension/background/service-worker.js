@@ -120,7 +120,7 @@ async function hello(sender) {
   providerInjection=providerInjection.catch(()=>{}).then(async()=>{
   c=await config();
   const loaded=await execute({target:{tabId:sender.tab.id,documentIds:[sender.documentId]},
-    world:'MAIN',func:()=>{if((globalThis.__KKGR_CORE__||globalThis.__KKGR_PROCESSING__)&&globalThis.__KKGR_PROCESSING__?.moduleRuntimeVersion!==3){globalThis.__KKGR_PROCESSING__?.cancelAll();globalThis.__KKGR_CORE__?.stop();throw Error('拡張更新後は読書タブを再読み込みしてください。');}if(globalThis.__KKGR_CORE__&&!globalThis.__KKGR_DEV4_1_4_READY__)throw Error('DEV4への更新後は読書タブを再読み込みしてください。');return !!globalThis.__KKGR_CORE__&&!!globalThis.__KKGR_DEV4_1_4_READY__;}});
+    world:'MAIN',func:()=>{if((globalThis.__KKGR_CORE__||globalThis.__KKGR_PROCESSING__)&&globalThis.__KKGR_PROCESSING__?.moduleRuntimeVersion!==4){globalThis.__KKGR_PROCESSING__?.cancelAll();globalThis.__KKGR_CORE__?.stop();throw Error('拡張更新後は読書タブを再読み込みしてください。');}if(globalThis.__KKGR_CORE__&&!globalThis.__KKGR_DEV4_1_4_READY__)throw Error('DEV4への更新後は読書タブを再読み込みしてください。');return !!globalThis.__KKGR_CORE__&&!!globalThis.__KKGR_DEV4_1_4_READY__;}});
   if(!loaded[0]?.result) {
     const target={tabId:sender.tab.id,documentIds:[sender.documentId]};
     const runFiles=files=>withDeadline(chrome.scripting.executeScript({target,world:'MAIN',files}));
@@ -197,20 +197,22 @@ async function syncRuntimeModules(target,c=null){
    if(state.errors.length){globalThis.__KKGR_PROCESSING__?.cancelAll();globalThis.__KKGR_RENDERER_MODULES__={};globalThis.__KKGR_FILTER_MODULES__={...(globalThis.__KKGR_BUILTIN_FILTER_MODULES__||{})};globalThis.__KKGR_MODULES__=[];}
    for(const d of globalThis.__KKGR_MODULES__||[]){if(d.kind==='renderer')globalThis.__KKGR_RENDERER_MODULES__[d.id]=d;else globalThis.__KKGR_FILTER_MODULES__[d.id]=d;}
    globalThis.__KKGR_MODULES__=[];
-   state.ready=state.active&&state.allowed&&state.errors.length===0;globalThis.__KKGR_MODULE_RUNTIME__=state;
+   state.ready=false;globalThis.__KKGR_MODULE_RUNTIME__=state;
    globalThis.__KKGR_FILTER_SIGNATURE__=state.key;
    globalThis.__KKGR_MODULE_DIAGNOSTICS__=state.errors.map(e=>({stage:'module',...e}));
   }
   globalThis.__KKGR_FILTER_CATALOG__=filters;
  },args:[state,changed,filters]});
  await run({files:['modules/module-loader.js']});
- await run({func:(catalog,changed)=>{
-  if(globalThis.__KKGR_CORE__){globalThis.__KKGR_CORE__.syncRenderers(globalThis.__KKGR_RENDERER_PROVIDERS__||[],catalog);delete globalThis.__KKGR_RENDERER_PROVIDERS__;if(changed)globalThis.__KKGR_CORE__.syncFilters();}
- },args:[catalog,changed]});
  // Keep the same identity in the service worker and the reader for job authorization.
  state.ready=state.active&&state.allowed&&state.errors.length===0;
  const documentId=target.documentIds?.[0]||(await chrome.storage.session.get('tab:'+target.tabId))['tab:'+target.tabId]?.documentId;
  await chrome.storage.session.set({['module-runtime:'+target.tabId]:{...state,documentId},['modules:'+target.tabId]:{documentId,items:state.errors.map(e=>({stage:'module',...e}))}});
+ // Authorize the document before exposing readiness to image jobs triggered by Core reconciliation.
+ await run({func:state=>{const current=globalThis.__KKGR_MODULE_RUNTIME__;if(current?.key===state.key&&current.allowed===state.allowed&&!current.errors?.length)current.ready=state.ready;},args:[state]});
+ await run({func:(catalog,changed)=>{
+  if(globalThis.__KKGR_CORE__){globalThis.__KKGR_CORE__.syncRenderers(globalThis.__KKGR_RENDERER_PROVIDERS__||[],catalog);delete globalThis.__KKGR_RENDERER_PROVIDERS__;if(changed)globalThis.__KKGR_CORE__.syncFilters();}
+ },args:[catalog,changed]});
  return state;
 }
 async function syncRuntimeFilters(target){return syncRuntimeModules(target);}

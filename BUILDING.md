@@ -29,11 +29,14 @@ See [Module execution lifecycle](docs/Module-Execution-Lifecycle-ja.md) for exec
 ```sh
 TEST_CHROME=/path/to/chromium node tests/module-execution-browser.cjs
 TEST_CHROME=/path/to/chromium node tests/module-startup-browser.cjs
+TEST_CHROME=/path/to/chromium node tests/reader-spa-runtime-browser.cjs
 ```
 
 The startup fixture exercises the production HELLO path and real Reader Core, including interrupted initialization, catalog edits before retry, hot reconnection, foundation failures, stale readiness markers, overlapping connections and registered title pages, for Kavita/Komga, desktop/touch viewports and both processing modes. Readiness must validate the active Core registry after Core consumes its pending provider queue. The execution fixture additionally delays authorization replies across mode changes, including returning to the original mode, to check that an old denial cannot revoke a new runtime.
 
 The execution fixture also invalidates the isolated world's runtime API after processing and checks retirement without uncaught page errors. `bridge-context-loss.test.cjs` covers missing APIs, synchronous context-invalidated exceptions, resource/listener cleanup, session ownership and recovery after a temporary transport error. After replacing or reloading the installed extension, reload existing reader tabs to replace their old content scripts.
+
+The SPA fixture uses the production service worker, MAIN adapter, isolated bridge, Reader Core and real GPU/Worker pipeline together. It enters the reader from a title page twice without reloading, checks processed Blob display, selected renderer/output dimensions, and verifies no `[crisp-images]` warnings. Its 16 conditions cover Kavita/Komga, desktop/touch viewports, Worker/speed modes and built-in/optional Lanczos3 renderers, with the packaged USM filter. Chrome APIs and server responses are fixtures; this does not replace installed-extension tests on physical devices.
 
 This fixture is not a replacement for installed-extension tests in Chrome or Android Edge. The historical usm-memory-browser.cjs comparison additionally requires its original pre-optimization source at ../phase3-active-fix/extension/gpu/usm.js; that source is not in this repository.
 

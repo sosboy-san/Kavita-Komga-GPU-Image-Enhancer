@@ -39,9 +39,10 @@ USM・紙地復元・カラー判定付き線色／濃度調整を初回登録�
 - `modules/module-loader.js`：関数登録を必要としないレンダラー候補。
 - `content/main.js`、`content/bridge.js`、`gpu/processing-client.js`：認可往復、取消監視、中断。
 - `gpu/main-runtime.js`、`gpu/worker-runtime.js`、生成物 `gpu/worker-source.js`：破棄処理、管理対象USMを同梱の旧記述子より優先。
+- `content/reader-core.js`：正常な中断時の待機・元画像復帰・再実行。
 - `tests/*` の追加・更新、`reference-packages/*`、本資料と `BUILDING.md`。
 
-GPUホスト、LoHalo Jr.／NoHalo Jr.、USMの演算、公式2フィルターのソース、モジュール契約、Reader Core、ページ送り・全画面・詳細設定表示の実装は変更しない。
+GPUホスト、LoHalo Jr.／NoHalo Jr.、USMの演算、公式2フィルターのソース、モジュール契約、ページ送り・全画面・詳細設定表示の実装は変更しない。Reader Coreの変更は中断時のエラー処理に限定する。
 
 ## 検証と限界
 
@@ -62,6 +63,14 @@ GPUホスト、LoHalo Jr.／NoHalo Jr.、USMの演算、公式2フィルター�
 Worker接続要求にも接続IDを付け、古いbridgeが新しい接続のポートを受け取らないようにした。公開GPU APIとは別の内部接続版を3へ更新し、旧クライアントの残るタブには再読み込みを要求する。詳細設定を閉じる際の通知も同期例外をPromiseで扱い、UIの片付けが中断しないようにした。保存済み設定・GPU演算・Manifest・権限・CSPは維持する。
 
 追補の検証はコア30件、起動8条件、実Worker／MAIN処理と失効のPC幅・タッチ幅、設定オーバーレイのKavita／Komga・PC幅／タッチ幅。runtime消失、getURL/sendMessageの同期例外、後始末、古い接続の無視、一時的な通信失敗からの復帰を検証する。`9254c4a` ではruntime消失時にgetURL参照エラーとなることも確認した。実機での拡張更新そのものを自動化した試験ではない。修正版へ更新した後も、更新前から開いている読書タブは再読み込みして旧スクリプトを入れ替える必要がある。
+
+さらに作品詳細→読書のSPA遷移では、詳細画面で作った「読書中でない」準備状態が更新されない経路があった。MAINの既存監視からパス変更も通知し、bridgeが準備を更新する。同時要求はまとめ、準備中に到着した画像ジョブは完了を待つ。準備済みジョブには準備用の追加IPCを入れない。モード・選択と一致しない古いジョブは中断し、新しい設定での処理を優先する。
+
+背景側の認可状態を保存する前にMAINでreadyが見える競合も修正した。背景状態の保存→MAINでのready公開→Coreの再処理通知の順にする。保存を意図的に止めたテストでは、保存完了までMAINが利用不可のままであることを確認する。内部接続版は4。公開GPU APIは変更しない。
+
+Reader Coreのエラー分岐も、正常な `ANALYSIS_CANCELLED` を待機・再実行として扱うようにした。元画像へ戻す既存の処理と、epoch変更時の再実行を維持する。権限拒否、モジュール例外、タイムアウト等の実際の失敗は従来どおり報告する。
+
+`reader-spa-runtime-browser.cjs` は実際の背景処理・MAIN・ISOLATED bridge・Core・Sandbox/Worker・GPU処理を通し、詳細→読書→詳細→再読書の2回とも処理済みBlob画像になること、レンダラーID・出力寸法を確認する。Kavita／Komga×PC幅／タッチ幅×Worker／速度優先×LoHalo／追加Lanczos3の16条件で、USM付き表示が成功し、未捕捉例外と `[crisp-images]` 警告は発生しなかった。Workerで追加レンダラーがMAIN評価されないことも確認する。`0d1d5a9` では同じ遷移で `Module runtime is not ready` が発生し、GPU画像にならないことを再現した。APIとサーバー応答はフィクスチャであり、実機試験ではない。
 
 変更前後で768×1024画像を512×683へ処理（LoHalo＋紙地復元＋APIカウンター用フィルター）、各条件2回ウォームアップ後6回測定した。Chromium＋SwiftShaderで順次実行した結果は以下のとおり。時間は認可・処理・PNG化までを含む。
 

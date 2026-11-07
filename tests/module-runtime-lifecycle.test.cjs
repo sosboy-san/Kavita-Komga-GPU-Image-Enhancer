@@ -35,6 +35,12 @@ const prefix=fs.readFileSync(__dirname+'/dev2-sites.test.cjs','utf8').split('(as
  state=await sync();assert(!state.ready);assert.equal(main.__KKGR_MODULE_RUNTIME__.ready,false,'Revocation during unchanged sync must invalidate MAIN');assert.equal(Object.keys(main.__KKGR_RENDERER_MODULES__).length,0);
  h.ctx.chrome.userScripts.getScripts=async()=>[];state=await sync();assert(state.ready,'Permission restoration prepares the current selection again');
  const readerURL=h.tabs.get(1).url;h.tabs.get(1).url='https://nas.example:3627/kavita/library';assert((await h.send({type:'CHECK_MODULE_ACCESS',runtimeKey:state.key},sender)).error,'The live tab must still be a reader');h.tabs.get(1).url=readerURL;
+ await change({type:'SET_PROCESSING_MODE',processingMode:'worker'});
+ const saveSession=h.ctx.chrome.storage.session.set;let commitReady,commitStarted;
+ const started=new Promise(resolve=>{commitStarted=resolve;}),commit=new Promise(resolve=>{commitReady=resolve;});let gate=true;
+ h.ctx.chrome.storage.session.set=async values=>{if(gate&&values['module-runtime:1']?.ready){gate=false;commitStarted();await commit;}return saveSession(values);};
+ let commitTimer;const preparing=sync();await Promise.race([started,new Promise((_,reject)=>{commitTimer=setTimeout(()=>reject(Error('Session commit not reached')),5000);})]);clearTimeout(commitTimer);
+ assert.equal(main.__KKGR_MODULE_RUNTIME__.ready,false,'MAIN must remain unavailable until background authorization is committed');commitReady();state=await preparing;assert(state.ready);assert.equal(main.__KKGR_MODULE_RUNTIME__.ready,true);h.ctx.chrome.storage.session.set=saveSession;
  h.grants.clear();assert((await h.send({type:'CHECK_MODULE_ACCESS',runtimeKey:state.key},sender)).error);
  assert(main.cancelled>=5);console.log('PASS real background + MAIN VM: zero Worker evaluation, selected speed only, bundled paths, stable registration, update/delete/OFF/revocation identities');
 })().catch(e=>{console.error(e);process.exitCode=1;});

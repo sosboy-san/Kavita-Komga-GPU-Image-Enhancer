@@ -12,6 +12,7 @@
   const KEY='__KKGR_E2_BRIDGE__', CHANNEL='kkgr-e2-v1';
   if(globalThis[KEY]) return;
   const session=newId(), pending=new Map(), removers=[];
+  let booting=null,bootPath=null,preparedPath=null,bootAgain=false;
   let alive=true,stoppingForTransport=false,accessTimer=null,accessState=null,checkingAccess=false;
   let workerFrame=null,workerReady=false;const workerPorts=[];
   const contextError=()=>Object.assign(Error('Extension context invalidated. Reload the reader tab.'),{code:'EXTENSION_CONTEXT_INVALIDATED'});
@@ -60,6 +61,7 @@
   listen(window,'message',e=>{
     if(!alive)return;
     const m=e.data,s=m?.status;if(e.source===window&&e.origin===location.origin&&m?.channel===CHANNEL&&m.from==='main'&&m.session===session&&m.type==='DIAGNOSTICS'){const p=pending.get(m.id);if(p){clearTimeout(p.timer);pending.delete(m.id);if(m.error){p.reject(Error(m.error));return;}let json;try{json=JSON.stringify(m.diagnostics);}catch{}p.resolve(json&&json.length<=5*1024*1024?JSON.parse(json):null);}return;}
+    if(e.source===window&&e.origin===location.origin&&m?.channel===CHANNEL&&m.from==='main'&&m.session===session&&m.type==='PREPARE_MODULE_RUNTIME'){boot().then(()=>{if(alive)window.postMessage({channel:CHANNEL,from:'bridge',session,type:'MODULE_RUNTIME_PREPARED',changeId:m.changeId,result:{ok:true}},location.origin);},error=>{if(alive)window.postMessage({channel:CHANNEL,from:'bridge',session,type:'MODULE_RUNTIME_PREPARED',changeId:m.changeId,result:{error:error.message}},location.origin);});return;}
     if(e.source===window&&e.origin===location.origin&&m?.channel===CHANNEL&&m.from==='main'&&m.session===session&&m.type==='AUTHORIZE_MODULE_JOB'){
       const requestState=accessState;sendRuntime({type:'AUTHORIZE_MODULE_JOB',runtimeKey:m.runtimeKey,mode:m.mode,packages:m.packages}).then(result=>{if(!alive)return;if(!result?.ok)invalidateModules(result?.error||'Module access revoked',m.runtimeKey,m.changeId,requestState);window.postMessage({channel:CHANNEL,from:'bridge',session,type:'MODULE_AUTHORIZATION_RESULT',changeId:m.changeId,result},location.origin);}).catch(e=>{if(!alive)return;invalidateModules(String(e.message),m.runtimeKey,m.changeId,requestState);window.postMessage({channel:CHANNEL,from:'bridge',session,type:'MODULE_AUTHORIZATION_RESULT',changeId:m.changeId,result:{error:String(e.message)}},location.origin);});return;
     }
@@ -81,6 +83,7 @@
       providerIds:Array.isArray(s.providerIds)?s.providerIds.filter(id=>typeof id==='string'):[]};
     const p=pending.get(m.id);
     if(p) {clearTimeout(p.timer);pending.delete(m.id);p.resolve(status);}
+    if(alive&&s.enabled&&preparedPath!==(location.pathname||''))boot().catch(()=>{});
     if(alive&&!stoppingForTransport)sendRuntime({type:'STATUS',status}).catch(error=>{if(!alive||stoppingForTransport)return;if(contextLost(error)){retire(contextError());return;}stoppingForTransport=true;request('STOP').catch(()=>{}).finally(()=>{stoppingForTransport=false;});});
   });
   const runtimeListener=(m,_sender,sendResponse)=>{
@@ -92,7 +95,8 @@
       if(m.type==='REANALYZE')return request('REANALYZE',{stage:m.stage,filterId:m.filterId});
       if(m.type==='DIAGNOSTICS')return request('DIAGNOSTICS');
       if(m.type==='STOP'){watchAccess(null);invalidateModules('Site access revoked');globalThis.__KKGR_READER_SETTINGS__?.close();return request('STOP');}
-      const config=m.type==='PING'?await sendRuntime({type:'HELLO'}):m.config;
+      if(m.type==='PING')return boot();
+      const config=m.config;
       if(config?.error) throw new Error(config.error);
       if(!config?.allowed) return request('STOP');
       watchAccess(config.moduleRuntime);
@@ -102,15 +106,18 @@
     return true;
   };
   try{const api=runtime();api.onMessage.addListener(runtimeListener);removers.push(()=>api.onMessage.removeListener(runtimeListener));}catch(error){retire(contextError());return;}
-  const boot=async()=>{
-    if(!alive)return;
+  const boot=()=>{
+    if(!alive)return Promise.reject(contextError());
+    const path=location.pathname||'';if(booting){if(path!==bootPath)bootAgain=true;return booting;}bootPath=path;
+    booting=(async()=>{
     const config=await sendRuntime({type:'HELLO'});
     if(config?.error) throw new Error(config.error);
-    if(!config?.allowed) return;
+    if(!config?.allowed){watchAccess(null);invalidateModules('Site access revoked');return request('STOP');}
     watchAccess(config.moduleRuntime);
     await request('HELLO');
     const status=await request('CONFIG',{appVersion:config.appVersion,revision:config.revision,enabled:config.enabled,developerMode:config.developerMode,diagnosticRecording:config.diagnosticRecording,diagnosticClearRevision:config.diagnosticClearRevision,hud:config.hud,renderer:config.renderer,hudMode:config.hudMode,hudPosition:config.hudPosition,uiLanguage:config.uiLanguage,disabledRenderers:config.disabledRenderers,quick:config.quick,rendererOrder:config.rendererOrder,filters:config.filters,kavitaAutoFullscreen:config.kavitaAutoFullscreen,kavitaPageTurnAnimation:config.kavitaPageTurnAnimation,processingMode:config.processingMode,outputFormat:config.outputFormat,processingTimeoutMs:config.processingTimeoutMs,processingRetryRevision:config.processingRetryRevision,filterParameters:config.filterParameters,filterCandidates:config.filterCandidates,filterCatalog:config.filterCatalog});
-    await sendRuntime({type:'STATUS',status});
+    preparedPath=path;await sendRuntime({type:'STATUS',status});return status;
+    })().finally(()=>{booting=null;if(alive&&(bootAgain||(location.pathname||'')!==path)){bootAgain=false;boot().catch(()=>{});}});return booting;
   };
   globalThis[KEY]=true;
   boot().catch(e=>sendRuntime({type:'DIAGNOSTIC',error:e.message}).catch(()=>{}));

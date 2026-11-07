@@ -16,6 +16,7 @@
   const documentToken=newId(),changes=new Map();
   const settings={enabled:false,hud:true,renderer:'lanczos3',hudMode:'normal',disabledRenderers:[]};
   Object.defineProperty(globalThis,'__KKGR_PLATFORM__',{value:{settings,processingSession:()=>session,
+    ensureModuleRuntime(){return new Promise((resolve,reject)=>{if(!session){reject(Error('Module bridge unavailable'));return;}const changeId=newId(),timer=setTimeout(()=>{changes.delete(changeId);reject(Error('Module preparation timed out'));},12000);changes.set(changeId,{resolve,reject,timer});window.postMessage({channel:CHANNEL,from:'main',session,type:'PREPARE_MODULE_RUNTIME',changeId},location.origin);});},
     authorizeModules(payload){return new Promise((resolve,reject)=>{if(!session){reject(Error('Module bridge unavailable'));return;}const changeId=newId(),timer=setTimeout(()=>{changes.delete(changeId);reject(Error('Module authorization timed out'));},5000);changes.set(changeId,{resolve,reject,timer,moduleRuntime:globalThis.__KKGR_MODULE_RUNTIME__});window.postMessage({channel:CHANNEL,from:'main',session,type:'AUTHORIZE_MODULE_JOB',changeId,...payload},location.origin);});},
     change(key,value) {
       if(!session) return;
@@ -39,7 +40,7 @@
       for(const change of changes.values()){clearTimeout(change.timer);change.reject(error);}changes.clear();session=null;return;
     }
     if(m.type==='MODULE_RUNTIME_INVALIDATED'&&m.session===session){const state=globalThis.__KKGR_MODULE_RUNTIME__;if((m.runtimeKey&&m.runtimeKey!==state?.key)||(m.changeId&&changes.get(m.changeId)?.moduleRuntime!==state))return;if(state){state.ready=false;state.allowed=false;state.errors=[{message:m.error||'Module access revoked'}];globalThis.__KKGR_FILTER_SIGNATURE__=state.key+':revoked';}globalThis.__KKGR_RENDERER_MODULES__={};globalThis.__KKGR_FILTER_MODULES__={...(globalThis.__KKGR_BUILTIN_FILTER_MODULES__||{})};globalThis.__KKGR_MODULES__=[];globalThis.__KKGR_PROCESSING__?.retry();globalThis.__KKGR_CORE__?.syncFilters();return;}
-    if(m.type==='MODULE_AUTHORIZATION_RESULT'&&m.session===session){const pending=changes.get(m.changeId);if(pending){clearTimeout(pending.timer);changes.delete(m.changeId);m.result?.ok?pending.resolve(m.result):pending.reject(Error(m.result?.error||'Module access revoked'));}return;}
+    if(['MODULE_AUTHORIZATION_RESULT','MODULE_RUNTIME_PREPARED'].includes(m.type)&&m.session===session){const pending=changes.get(m.changeId);if(pending){clearTimeout(pending.timer);changes.delete(m.changeId);m.result?.ok?pending.resolve(m.result):pending.reject(Error(m.result?.error||'Module access revoked'));}return;}
     if(m.type==='SETTING_RESULT'&&m.session===session){const pending=changes.get(m.changeId);if(pending){clearTimeout(pending.timer);changes.delete(m.changeId);m.error?pending.reject(Error(m.error)):pending.resolve();}return;}
     if(typeof m.id!=='string')return;
     if(m.type==='HELLO') {if(session&&session!==m.session)globalThis.__KKGR_PROCESSING__?.cancelAll();session=m.session;reply(m.id);return;}
@@ -57,8 +58,8 @@
     globalThis.__KKGR_CORE__?.apply(settings);
     if(m.enabled!==enabled) {
       enabled=m.enabled;
-      if(enabled) {starts++;let previous=site();observer=new MutationObserver(()=>{
-        const now=site();if(now!==previous) {previous=now;reply('event');}
+      if(enabled) {starts++;let previous=site(),previousPath=location.pathname;observer=new MutationObserver(()=>{
+        const now=site(),path=location.pathname;if(now!==previous||path!==previousPath) {previous=now;previousPath=path;reply('event');}
       });
         observer.observe(document.documentElement,{childList:true,subtree:true});}
       else {stops++;observer?.disconnect();observer=null;}

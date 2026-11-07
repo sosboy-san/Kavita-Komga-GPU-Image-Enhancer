@@ -1951,7 +1951,13 @@
         if(jobEpoch===rendererEpoch&&s.origUrl===original){const generated=s.blobUrl;if(generated&&generated!==previous.blobUrl){if((img.currentSrc||img.src)===generated)try{await setSrc(img,previous.blobUrl||original);}catch{}if(s.cache.get(key)===generated){if(previous.cache)s.cache.set(key,previous.cache);else s.cache.delete(key);}const rec=blobs.get(generated);if(rec){blobs.delete(generated);blobBytes-=rec.bytes;}releaseProcessedURL(generated);}s.blobUrl=previous.blobUrl;s.key=previous.key;s.report=previous.report;s.presentation=previous.presentation;}
         throw e;
       }
-      if(e.code==='ANALYSIS_CANCELLED'&&jobEpoch!==rendererEpoch){s.rerun=true;return;}
+      if(e.code==='ANALYSIS_CANCELLED'){
+        if(jobEpoch!==rendererEpoch){s.rerun=true;return;}
+        if(s.blobUrl){try{await setSrc(img,s.origUrl);s.blobUrl=null;}catch{}}
+        s.key=null;s.status='waiting for current processing state';
+        if(globalThis.__KKGR_MODULE_RUNTIME__?.ready===false)s.rerun=false;
+        hudState(s,{phase:'waiting',stage:'renderer',issue:null});return;
+      }
       if(e.code?.startsWith('ANALYSIS_')||['SOURCE_SAMPLE_FAILED','PROCESSING_TIMEOUT','ENCODE_TIMEOUT','GPU_TIMEOUT','MEMORY_BUDGET_EXCEEDED','ALLOCATION_FAILED','FRAMEBUFFER_INCOMPLETE','SIZE_LIMIT'].includes(e.code)){
         if(s.blobUrl){try{await setSrc(img,s.origUrl);s.blobUrl=null;}catch{}}
       }
