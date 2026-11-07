@@ -43,6 +43,14 @@ try{for(const mobile of [false,true]){
   const result=await page.evaluate(async runs=>{const durations=[];let last;for(let i=0;i<runs;i++){const start=performance.now();last=await __KKGR_PROCESSING__.start('lohalo',benchSource,768,1024,512,683,'image/png',__KKGR_PLATFORM__.settings);if(i>=2)durations.push(performance.now()-start);}return {durations,bytes:Array.from(new Uint8Array(await last.arrayBuffer())),callbacks:globalThis.moduleCallbacks||{},evaluations:globalThis.moduleEvaluations||{},isolated:__KKGR_GPU_LAST_JOB__.isolated};},runs);
   const hash=await digest(result.bytes);reports.push({baseline,mobile,mode,hash,bytes:result.bytes.length,durations:result.durations,apiCalls,callbacks:result.callbacks,evaluations:result.evaluations});assert.equal(result.isolated,mode==='worker');
   if(!baseline){if(mode==='worker'){assert.equal(apiCalls,0);assert.equal(result.evaluations['probe.selected'],undefined);}else{assert.equal(apiCalls,1);assert.equal(result.evaluations['probe.selected'],1);assert.equal(result.evaluations['probe.unselected'],undefined);assert(result.callbacks.execute>=runs);}}
+  if(!baseline){
+   // Core's selected provider and the settings echo can change at different times.
+   // A valid job must render identically even when the unused settings.renderer is stale.
+   const consistent=await page.evaluate(async()=>{const settings={...__KKGR_PLATFORM__.settings,renderer:'nohalo'};const blob=await __KKGR_PROCESSING__.start('lohalo',benchSource,768,1024,512,683,'image/png',settings);return {bytes:Array.from(new Uint8Array(await blob.arrayBuffer())),id:__KKGR_GPU_LAST_JOB__.id};});
+   assert.equal(consistent.id,'lohalo');assert.equal(await digest(consistent.bytes),hash,'A delayed settings echo must not cancel the selected renderer');
+   const stale=await page.evaluate(()=>__KKGR_PROCESSING__.start('nohalo',benchSource,768,1024,512,683,'image/png',__KKGR_PLATFORM__.settings).then(()=>({ok:true}),e=>({code:e.code})));
+   assert.equal(stale.code,'ANALYSIS_CANCELLED','A fresh settings mirror must not authorize a stale provider');
+  }
  }
  if(!baseline){
   // A delayed denial for the previous mode must not revoke the newly prepared mode.

@@ -48,13 +48,24 @@ try{for(const app of ['kavita','komga'])for(const mobile of [false,true])for(con
    await change('filterParameters',{stage:'post',id:'sosboy-san.gpu-usm',values:{radius:3,amount:3,threshold:0}});const sharp=await pixels();assert.notEqual(sharp.hash,off.hash,'USM parameter changes must affect actual displayed pixels');
    await change('filters',{stage:'post',id:null});await change('filterParameters',{stage:'pre',id:'sosboy-san.monochrome-line-color',values:{mode:'force',lineColor:'#0000FF',lineStrength:100}},false);await change('filters',{stage:'pre',id:'sosboy-san.monochrome-line-color'});const blue=await pixels();assert(blue.ink[2]>blue.ink[0]+30,'Force blue must change displayed ink color');
    await change('filters',{stage:'pre',id:null});await change('filterParameters',{stage:'pre',id:'sosboy-san.paper-restoration',values:{paperMode:'manual',paperColor:'#C2B09D',strength:100,tolerance:0.5,inkProtection:0.05,colorProtection:0,spatialAmount:0}},false);await change('filters',{stage:'pre',id:'sosboy-san.paper-restoration'});const paper=await pixels();assert(paper.paper[0]>off.paper[0]+20,'Paper restoration must change the displayed paper color');
-   await change('filters',{stage:'pre',id:null});await change('renderer','nohalo');assert.equal(await page.evaluate(()=>__KKGR_CORE__.status().renderer),'nohalo');await change('renderer','lohalo');assert.equal(await page.evaluate(()=>__KKGR_CORE__.status().renderer),'lohalo');await change('filters',{stage:'post',id:'sosboy-san.gpu-usm'});
+   await change('filters',{stage:'pre',id:null});await change('renderer','nohalo');assert.equal(await page.evaluate(()=>__KKGR_CORE__.status().renderer),'nohalo');await change('filters',{stage:'post',id:'sosboy-san.gpu-usm'});
+   await vm.runInContext('Promise.all([...readerDelivery.values()].map(slot=>slot.promise))',h.ctx);
+   // Hold only the settings renderer mirror behind Core/runtime, as can happen
+   // before an asynchronous CONFIG echo. A new USM value avoids a cache hit.
+   const beforeEcho=await page.evaluate(()=>{const previous=document.getElementById('reader-page').src;__KKGR_PLATFORM__.settings.renderer='lohalo';__KKGR_PLATFORM__.settings.filterParameters=JSON.parse(JSON.stringify(__KKGR_PLATFORM__.settings.filterParameters));__KKGR_PLATFORM__.settings.filterParameters.post['sosboy-san.gpu-usm'].amount=2.375;__crispImages.invalidateAll();return previous;});
+   try{
+    await page.waitForFunction(previous=>{const img=document.getElementById('reader-page'),s=__crispImages.state(img);return img.src!==previous&&img.src.startsWith('blob:')&&s?.presentation?.phase==='ready'&&!s.busy;},beforeEcho,{timeout:12000});
+    assert.deepEqual(await page.evaluate(()=>({core:__KKGR_CORE__.status().renderer,job:__KKGR_GPU_LAST_JOB__.id,mirror:__KKGR_PLATFORM__.settings.renderer,pre:__KKGR_PLATFORM__.settings.filters.pre})),{core:'nohalo',job:'nohalo',mirror:'lohalo',pre:null});
+   }finally{await page.evaluate(()=>{__KKGR_PLATFORM__.settings.renderer='nohalo';});}
+   console.log('PASS actual reader with delayed renderer settings echo',mode);
+   await change('renderer','lohalo');assert.equal(await page.evaluate(()=>__KKGR_CORE__.status().renderer),'lohalo');
    await vm.runInContext('Promise.all([...readerDelivery.values()].map(slot=>slot.promise))',h.ctx);
    let startHold,releaseHold;const held=new Promise(resolve=>{startHold=resolve;});statusGate={count:0,started:startHold,release:new Promise(resolve=>{releaseHold=resolve;})};
    const ping=h.ctx.chrome.tabs.sendMessage(1,{type:'PING'});await Promise.race([held,new Promise((_,reject)=>setTimeout(()=>reject(Error('STATUS hold not reached')),5000))]);
    const oldDelivery=h.ctx.chrome.tabs.sendMessage;let notifyPing;const notified=new Promise(resolve=>{notifyPing=resolve;});h.ctx.chrome.tabs.sendMessage=(id,message)=>{if(message.type==='PING')notifyPing();return oldDelivery(id,message);};
    const updated=await h.send({type:'SET_RENDERER',renderer:'nohalo'});assert(!updated.error,updated.error);try{await Promise.race([notified,new Promise((_,reject)=>setTimeout(()=>reject(Error('Setting PING not delivered')),5000))]);}finally{releaseHold();}statusGate=null;await ping;
    try{await page.waitForFunction(()=>__KKGR_CORE__.status().renderer==='nohalo'&&__KKGR_MODULE_RUNTIME__.slots.renderer==='nohalo',{},{timeout:6000});}catch(error){console.log('STALE BOOT',await page.evaluate(()=>({renderer:__KKGR_CORE__.status().renderer,settings:__KKGR_PLATFORM__.settings.renderer,runtime:__KKGR_MODULE_RUNTIME__})));throw error;}
+   await page.waitForFunction(()=>{const s=__crispImages.state(document.getElementById('reader-page'));return !s.busy&&s.presentation?.phase==='ready'&&s.presentation.actualRenderer==='nohalo';},{},{timeout:12000});
    h.ctx.chrome.tabs.sendMessage=oldDelivery;await change('renderer','lohalo');
    console.log('PASS live UI pixel changes',mode,JSON.stringify({off,sharp,blue,paper}));h.ctx.chrome.tabs.query=async()=>[];
   }

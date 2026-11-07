@@ -27,7 +27,9 @@
    await globalThis.__KKGR_PLATFORM__.ensureModuleRuntime();runtime=globalThis.__KKGR_MODULE_RUNTIME__;
    if(jobGeneration!==generation||(runtime&&!runtime.ready&&!runtime.errors?.length))throw fail('ANALYSIS_CANCELLED','Module preparation pending');
   }
-  const selected=runtime?.slots,selectionChanged=selected&&((snapshot.renderer!==undefined&&snapshot.renderer!==selected.renderer)||(slots.pre||null)!==selected.pre||(slots.post||null)!==selected.post);
+  // Reader Core selects the provider before the asynchronous settings echo arrives.
+  // Validate the renderer this job executes, rather than the settings mirror.
+  const selected=runtime?.slots,selectionChanged=selected&&(provider!==selected.renderer||(slots.pre||null)!==selected.pre||(slots.post||null)!==selected.post);
   if(runtime&&(runtime.mode!==mode||selectionChanged))throw fail('ANALYSIS_CANCELLED','Module selection changed');
   if(runtime&&!runtime.ready)throw fail('MODULE_RUNTIME_UNAVAILABLE',runtime.errors?.[0]?.message||'Module runtime is not ready');
   if(packages.length&&!runtime)throw fail('MODULE_RUNTIME_UNAVAILABLE','Module selection is not initialized');
