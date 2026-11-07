@@ -31,7 +31,7 @@ TEST_CHROME=/path/to/chromium node tests/module-execution-browser.cjs
 TEST_CHROME=/path/to/chromium node tests/module-startup-browser.cjs
 ```
 
-The startup fixture exercises the production HELLO path and real Reader Core, including interrupted initialization, catalog edits before retry, hot reconnection, foundation failures and stale readiness markers, for Kavita/Komga, desktop/touch viewports and both processing modes. The execution fixture additionally delays authorization replies across mode changes, including returning to the original mode, to check that an old denial cannot revoke a new runtime.
+The startup fixture exercises the production HELLO path and real Reader Core, including interrupted initialization, catalog edits before retry, hot reconnection, foundation failures, stale readiness markers, overlapping connections and registered title pages, for Kavita/Komga, desktop/touch viewports and both processing modes. Readiness must validate the active Core registry after Core consumes its pending provider queue. The execution fixture additionally delays authorization replies across mode changes, including returning to the original mode, to check that an old denial cannot revoke a new runtime.
 
 This fixture is not a replacement for installed-extension tests in Chrome or Android Edge. The historical usm-memory-browser.cjs comparison additionally requires its original pre-optimization source at ../phase3-active-fix/extension/gpu/usm.js; that source is not in this repository.
 
