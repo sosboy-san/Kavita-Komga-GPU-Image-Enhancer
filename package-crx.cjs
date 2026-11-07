@@ -1,6 +1,6 @@
 // Portable packaging with Node built-ins. Keep the signing key outside extension/.
 const fs=require('fs'),path=require('path'),crypto=require('crypto');
-const dev=__dirname,workspace=path.dirname(dev),keyDir=path.join(workspace,'private-signing-api1'),keyPath=path.join(keyDir,'gpu-enhancer-0.9.5.pem');
+const dev=__dirname,workspace=path.dirname(dev),keyDir=path.join(workspace,'private-signing-api1'),keyPath=process.env.GPUIE_SIGNING_KEY_FILE||path.join(keyDir,'gpu-enhancer-release.pem');
 fs.mkdirSync(keyDir,{recursive:true});
 if(!fs.existsSync(keyPath)&&process.argv[2]!=='init')throw Error('Existing signing key required; refusing to change the extension identity');
 if(!fs.existsSync(keyPath)){const keys=crypto.generateKeyPairSync('rsa',{modulusLength:2048});fs.writeFileSync(keyPath,keys.privateKey.export({type:'pkcs8',format:'pem'}),{mode:0o600});}

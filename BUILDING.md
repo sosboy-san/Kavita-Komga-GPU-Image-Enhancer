@@ -15,7 +15,7 @@ Browser fixture tests and icon generation require Playwright and a separately co
 
 The installation ZIP contains the contents of extension/ at its root, plus LICENSE.md, LICENSE-MIT.txt, THIRD-PARTY-NOTICES.md and CREDITS.md. Do not zip the outer repository directory as the installation package.
 
-The existing package-crx.cjs expects the install ZIP in the repository's parent directory, named Kavita-Komga-GPU-Image-Enhancer-VERSION.zip. It keeps the private signing key in the parent private-signing-api1 directory. Private keys must never be committed or included in archives.
+The existing package-crx.cjs expects the install ZIP in the repository's parent directory, named Kavita-Komga-GPU-Image-Enhancer-VERSION.zip. It keeps the private signing key at `../private-signing-api1/gpu-enhancer-release.pem`. Set `GPUIE_SIGNING_KEY_FILE` to use an existing key elsewhere. Private keys must never be committed or included in public archives. Download and retain a separate private backup outside the cloud workspace; a workspace alone is not a durable key backup.
 
 The manifest key is public identity information, not a private key. To create your own signing identity, use `node package-crx.cjs init`, then prepare the install ZIP and run `node package-crx.cjs`. This changes the extension identity; do not do it for an existing release unless an identity change is intended.
 

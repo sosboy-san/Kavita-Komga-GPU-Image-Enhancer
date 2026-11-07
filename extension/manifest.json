@@ -47,7 +47,7 @@
     "extension_pages": "script-src 'self'; object-src 'self'",
     "sandbox": "sandbox allow-scripts; default-src 'none'; script-src 'self' 'unsafe-eval'; worker-src blob:;"
   },
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAs7lfJQYwJLCrpgRwWp4EQk/5cHMZ1LIz0n+n1AUFIPZ1PHk4cMSTOYAdOA105GcT3ZEeWysJlRmCMERPiq08CUoAnDwUKju3Vvir6HYOqagGy0OGoo2eh1WO1ziZ37WTJxQP3HqwfvwjE43o+3j0gD27obBovNp2pWFxXAjFl8geB4gYYp/EP/LVY4mCswLgpfp2918+WmR+C6PYNqGZdw1M0OZ3F7UH0GX6ROa/BmTqGsKF3GyT5ADNvBbKBrt00jil/DjghoY4QHKC7KIR6XpLe0hI3DArd7OPT5H4CjBsih1qWHaIGi1u+EAQrEU6zpMarCTNNVI8YuxX0JqfcQIDAQAB",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmj+ZK9oPUVNd9c1Panto9q23AQvgz+Mo9X77Zl0Izz9Ta1tycWQk8GnwJx/iXuqs0s5zfcl+1I6ytsv7h45WZmt7611NwRpM7bXFQkzAf/J8zEJPoV/WLrcwEOQ6XDkIH7CbOBk8kgP30QqZ7yAfZQz/7ujLlwPowi/ZuDvs/tZ2F0WNHx6A7z7Vqxx8p643OrEPQNpZd7lChfPMDeiO4KRXIYI29iQXgCfNTvPL6d+PhJ8YPRUpMsg5A5P8qrkSO+U2LTmjIF17ssROnCglTA5Q3xUd/N81pEzP8C6FLuiy66kQE4u9CvRYbzpr79B26j3XTmP08xgtsUXbxSmt2QIDAQAB",
   "web_accessible_resources": [
     {
       "resources": [

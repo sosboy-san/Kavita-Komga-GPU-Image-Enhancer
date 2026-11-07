@@ -22,7 +22,7 @@ The two optional Kavita features are under **Detailed settings → Options → B
 Transitions are skipped for vertical scrolling, Webtoon, split images and other unsupported modes, reduced motion, or an unknown reading direction.
 
 On desktop and Android, settings use a centered panel (up to 820×680 CSS px) at viewport widths of 600 CSS px or more, and fill narrower screens. The panel follows rotation and Fold resizing. Closing settings preserves reader fullscreen.
-Reload open reader tabs once after updating. Test builds use a different extension ID from the public build; avoid enabling both together.
+This release uses a new public signing key and extension ID. Install it as a separate extension from older public and test builds, register sites and configure settings again, and avoid enabling both builds together. Reload open reader tabs after installation.
 
 ## Get started
 
