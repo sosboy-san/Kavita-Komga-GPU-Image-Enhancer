@@ -3,6 +3,7 @@
 Use a maintained Node.js release. Core tests and worker generation use Node built-ins; no runtime package installation is required.
 
 ```sh
+node build-default-filters.cjs
 node build-worker.cjs
 node --test tests/*.test.cjs
 ```
@@ -21,7 +22,15 @@ The manifest key is public identity information, not a private key. To create yo
 
 ## Public modules
 
-reference-packages/ contains the three separately distributed public modules. Tests use additional legacy fixtures under tests/fixtures/modules/; those fixtures are not part of the module download pack and are not a promise of current public module support.
+reference-packages/ contains four separately distributable public modules, including the three removable default filters. Run build-default-filters.cjs after updating packaged filter sources; it generates static metadata and checksums from trusted repository files. Tests use additional legacy fixtures under tests/fixtures/modules/; those fixtures are not part of the module download pack and are not a promise of current public module support.
+
+See [Module execution lifecycle](docs/Module-Execution-Lifecycle-ja.md) for execution boundaries, permission revocation, regression coverage and remaining store-review risks. The Chromium fixture uses actual MAIN/isolated worlds, Sandbox CSP and WebGL, with mocked extension APIs:
+
+```sh
+TEST_CHROME=/path/to/chromium node tests/module-execution-browser.cjs
+```
+
+This fixture is not a replacement for installed-extension tests in Chrome or Android Edge. The historical usm-memory-browser.cjs comparison additionally requires its original pre-optimization source at ../phase3-active-fix/extension/gpu/usm.js; that source is not in this repository.
 
 ## Introduction page
 
