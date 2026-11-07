@@ -120,20 +120,20 @@ async function hello(sender) {
   providerInjection=providerInjection.catch(()=>{}).then(async()=>{
   c=await config();
   const loaded=await execute({target:{tabId:sender.tab.id,documentIds:[sender.documentId]},
-    world:'MAIN',func:()=>{if(globalThis.__KKGR_CORE__&&!globalThis.__KKGR_PROCESSING__?.moduleRuntimeVersion){globalThis.__KKGR_PROCESSING__?.cancelAll();globalThis.__KKGR_CORE__.stop();throw Error('拡張更新後は読書タブを再読み込みしてください。');}if(globalThis.__KKGR_CORE__&&!globalThis.__KKGR_DEV4_1_4_READY__)throw Error('DEV4への更新後は読書タブを再読み込みしてください。');return !!globalThis.__KKGR_DEV4_1_4_READY__;}});
+    world:'MAIN',func:()=>{if((globalThis.__KKGR_CORE__||globalThis.__KKGR_PROCESSING__)&&globalThis.__KKGR_PROCESSING__?.moduleRuntimeVersion!==2){globalThis.__KKGR_PROCESSING__?.cancelAll();globalThis.__KKGR_CORE__?.stop();throw Error('拡張更新後は読書タブを再読み込みしてください。');}if(globalThis.__KKGR_CORE__&&!globalThis.__KKGR_DEV4_1_4_READY__)throw Error('DEV4への更新後は読書タブを再読み込みしてください。');return !!globalThis.__KKGR_CORE__&&!!globalThis.__KKGR_DEV4_1_4_READY__;}});
   if(!loaded[0]?.result) {
     const target={tabId:sender.tab.id,documentIds:[sender.documentId]};
     const runFiles=files=>withDeadline(chrome.scripting.executeScript({target,world:'MAIN',files}));
     const catalog=await rendererCatalog();
-    await execute({target,world:'MAIN',func:entries=>{globalThis.__KKGR_RENDERER_CATALOG__=Object.freeze(entries.map(Object.freeze));globalThis.__KKGR_EXTERNAL_RENDERERS__=[];globalThis.__KKGR_MODULES__=[];},args:[catalog]});
+    await execute({target,world:'MAIN',func:entries=>{globalThis.__KKGR_PROCESSING__?.cancelAll();globalThis.__KKGR_MODULE_RUNTIME__=undefined;globalThis.__KKGR_RENDERER_CATALOG__=Object.freeze(entries.map(Object.freeze));globalThis.__KKGR_EXTERNAL_RENDERERS__=[];globalThis.__KKGR_MODULES__=[];globalThis.__KKGR_RENDERER_PROVIDERS__=[];},args:[catalog]});
     await runFiles(['ui/package-metadata.js','ui/parameter-schema.js','ui/analysis-contract.js','ui/module-contract.js']);
     await runFiles(['ui/developer-diagnostics.js','gpu/processing-client.js','gpu/main-runtime.js','gpu/cpu-analysis.js','gpu/host.js','gpu/lohalo-jr.js','gpu/nohalo-jr.js']);
     const diagnostics=[];
     for(const file of new Set(BUNDLED_CATALOG.filter(e=>e.kind!=='filter').map(e=>e.file))){
       try{await runFiles([file]);}catch(error){diagnostics.push({stage:'file',file,message:cleanError(error)});}
     }
+    if(diagnostics.length){await chrome.storage.session.set({['modules:'+sender.tab.id]:{documentId:sender.documentId,items:diagnostics}});throw Error('GPU provider initialization failed: '+diagnostics.map(d=>d.file+': '+d.message).join('; '));}
     moduleRuntime=await syncRuntimeModules(target,c);
-    if(diagnostics.length)await chrome.storage.session.set({["modules:"+sender.tab.id]:{documentId:sender.documentId,items:[...diagnostics,...moduleRuntime.errors]}});
     await runFiles(['content/providers-ready.js']);
   }else{moduleRuntime=await syncRuntimeModules({tabId:sender.tab.id,documentIds:[sender.documentId]},c);}
   const effective=await execute({target:{tabId:sender.tab.id,documentIds:[sender.documentId]},

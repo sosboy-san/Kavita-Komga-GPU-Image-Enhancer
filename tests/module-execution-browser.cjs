@@ -25,14 +25,14 @@ try{for(const mobile of [false,true]){
  h.ctx.chrome.userScripts={getScripts:async()=>{if(revoked)throw Error('User scripts disabled');return [];},execute:async args=>{apiCalls++;for(const script of args.js)await page.addScriptTag({content:script.code});return [{result:null}];}};
  h.ctx.chrome.scripting.executeScript=async args=>{if(args.files){for(const f of args.files)await page.addScriptTag({path:path.join(root,f)});return [{result:null}];}return [{result:await page.evaluate(({func,args})=>(0,eval)('('+func+')')(...args),{func:args.func.toString(),args:JSON.parse(JSON.stringify(args.args||[]))})}];};
  const target={tabId:1,documentIds:['reader']},sender={id:'dev',tab:{id:1},documentId:'reader',frameId:0,url:h.tabs.get(1).url};
- let runtime,cdp,isolated;
+ let runtime,cdp,isolated,authorizationGate;
  async function sync(){runtime=await h.ctx.syncRuntimeModules(target);const c=(await h.send({type:'GET_SAVED'})).config;await page.evaluate(c=>Object.assign(__KKGR_PLATFORM__.settings,c),JSON.parse(JSON.stringify(c)));if(cdp)await cdp.send('Runtime.evaluate',{contextId:isolated,awaitPromise:true,expression:'new Promise(resolve=>globalThis.bridgeRuntimeListener({type:"APPLY",config:'+JSON.stringify({...c,allowed:true,moduleRuntime:runtime})+'},{},resolve))'});}
  console.log('Stage: prepare metadata',mobile);await sync();console.log('Stage: metadata ready',mobile);if(!baseline){assert.equal(apiCalls,0);assert.equal(await page.evaluate(()=>Object.keys(globalThis.moduleEvaluations||{}).length),0);}
  // The actual bridge runs in a Chromium isolated world. Only chrome.* is mocked.
  cdp=await context.newCDPSession(page);const tree=await cdp.send('Page.getFrameTree');({executionContextId:isolated}=await cdp.send('Page.createIsolatedWorld',{frameId:tree.frameTree.frame.id,worldName:'gpuie-module-test'}));
  await cdp.send('Runtime.enable');
  await cdp.send('Runtime.addBinding',{name:'moduleChromeMessage',executionContextId:isolated});
- cdp.on('Runtime.bindingCalled',async e=>{if(e.name!=='moduleChromeMessage')return;const {id,message}=JSON.parse(e.payload);let result;try{if(message.type==='HELLO'){result={...(await h.send({type:'GET_SAVED'})).config,allowed:true,moduleRuntime:runtime};}else if(message.type==='STATUS')result={ok:true};else result=await h.send(message,sender);}catch(error){result={error:String(error.message)}}try{await cdp.send('Runtime.evaluate',{contextId:isolated,expression:'globalThis.resolveChrome('+JSON.stringify(id)+','+JSON.stringify(result)+')'});}catch{}});
+ cdp.on('Runtime.bindingCalled',async e=>{if(e.name!=='moduleChromeMessage')return;const {id,message}=JSON.parse(e.payload);let result;try{if(message.type==='HELLO'){result={...(await h.send({type:'GET_SAVED'})).config,allowed:true,moduleRuntime:runtime};}else if(message.type==='STATUS')result={ok:true};else{if(message.type==='AUTHORIZE_MODULE_JOB'&&authorizationGate){const gate=authorizationGate;authorizationGate=null;gate.started();await gate.release;result=await h.send(message,sender);gate.checked?.(result);if(gate.deliver)await gate.deliver;}else result=await h.send(message,sender);}}catch(error){result={error:String(error.message)}}try{await cdp.send('Runtime.evaluate',{contextId:isolated,expression:'globalThis.resolveChrome('+JSON.stringify(id)+','+JSON.stringify(result)+')'});}catch{}});
  await cdp.send('Runtime.evaluate',{contextId:isolated,expression:`(()=>{let serial=0;const pending=new Map();globalThis.resolveChrome=(id,r)=>{pending.get(id)?.(r);pending.delete(id)};globalThis.chrome={storage:{local:{get:async()=>({})},onChanged:{addListener(){}}},runtime:{getURL:p=>'https://extension.test/'+p,sendMessage:m=>new Promise(resolve=>{const id=++serial;pending.set(id,resolve);moduleChromeMessage(JSON.stringify({id,message:m}))}),onMessage:{addListener:f=>globalThis.bridgeRuntimeListener=f}}}})()`});
  await cdp.send('Runtime.evaluate',{contextId:isolated,expression:fs.readFileSync(path.join(root,'content/bridge.js'),'utf8')});
  console.log('Stage: bridge installed',mobile);await page.waitForFunction(()=>__KKGR_PLATFORM__.settings.filters?.post==='probe.selected');
@@ -45,9 +45,32 @@ try{for(const mobile of [false,true]){
   if(!baseline){if(mode==='worker'){assert.equal(apiCalls,0);assert.equal(result.evaluations['probe.selected'],undefined);}else{assert.equal(apiCalls,1);assert.equal(result.evaluations['probe.selected'],1);assert.equal(result.evaluations['probe.unselected'],undefined);assert(result.callbacks.execute>=runs);}}
  }
  if(!baseline){
+  // A delayed denial for the previous mode must not revoke the newly prepared mode.
+  let releaseAuthorization,startedAuthorization;
+  const started=new Promise(resolve=>{startedAuthorization=resolve;});
+  authorizationGate={started:startedAuthorization,release:new Promise(resolve=>{releaseAuthorization=resolve;})};
+  await page.evaluate(()=>{globalThis.staleModuleJob=__KKGR_PROCESSING__.start('lohalo',benchSource,768,1024,512,683,'image/png',__KKGR_PLATFORM__.settings).then(()=>({ok:true}),e=>({code:e.code,message:e.message}));});
+  await Promise.race([started,new Promise((_,reject)=>setTimeout(()=>reject(Error('Authorization gate not reached')),5000))]);
+  await change({type:'SET_PROCESSING_MODE',processingMode:'worker'});await sync();releaseAuthorization();
+  assert.equal((await page.evaluate(()=>staleModuleJob)).code,'ANALYSIS_CANCELLED');
+  assert.equal(await page.evaluate(()=>__KKGR_MODULE_RUNTIME__.ready),true,'A stale job denial must not invalidate the current runtime');
+  await page.evaluate(()=>__KKGR_PROCESSING__.start('lohalo',benchSource,768,1024,512,683,'image/png',__KKGR_PLATFORM__.settings).then(blob=>blob.size));
+  await change({type:'SET_PROCESSING_MODE',processingMode:'speed'});await sync();
+  // A denied old request can also arrive after leaving and returning to the same mode/key.
+  let beginABA,checkABA,checkedABA,deliverABA;
+  const abaStarted=new Promise(resolve=>{beginABA=resolve;}),abaChecked=new Promise(resolve=>{checkedABA=resolve;});
+  authorizationGate={started:beginABA,release:new Promise(resolve=>{checkABA=resolve;}),checked:checkedABA,deliver:new Promise(resolve=>{deliverABA=resolve;})};
+  const originalKey=await page.evaluate(()=>__KKGR_MODULE_RUNTIME__.key);
+  await page.evaluate(()=>{globalThis.staleModuleJob=__KKGR_PROCESSING__.start('lohalo',benchSource,768,1024,512,683,'image/png',__KKGR_PLATFORM__.settings).then(()=>({ok:true}),e=>({code:e.code,message:e.message}));});
+  await Promise.race([abaStarted,new Promise((_,reject)=>setTimeout(()=>reject(Error('ABA authorization not reached')),5000))]);
+  await change({type:'SET_PROCESSING_MODE',processingMode:'worker'});await sync();checkABA();assert((await abaChecked).error);
+  await change({type:'SET_PROCESSING_MODE',processingMode:'speed'});await sync();assert.equal(await page.evaluate(()=>__KKGR_MODULE_RUNTIME__.key),originalKey);deliverABA();
+  assert.equal((await page.evaluate(()=>staleModuleJob)).code,'ANALYSIS_CANCELLED');
+  assert.equal(await page.evaluate(()=>__KKGR_MODULE_RUNTIME__.ready),true,'Returning to the same selection must ignore the previous instance denial');
+  const preparedCalls=apiCalls;
   revoked=true;await assert.rejects(()=>page.evaluate(()=>__KKGR_PROCESSING__.start('lohalo',benchSource,768,1024,512,683,'image/png',__KKGR_PLATFORM__.settings)),/revoked/);
   assert.equal(await page.evaluate(()=>Object.keys(globalThis.__KKGR_FILTER_MODULES__||{}).length),0,'Revocation releases MAIN descriptors');
-  revoked=false;await change({type:'SET_PROCESSING_MODE',processingMode:'worker'});await sync();assert.equal(await page.evaluate(()=>__KKGR_MODULE_RUNTIME__.mode),'worker');assert.equal(apiCalls,1);assert(await page.evaluate(()=>moduleCallbacks.dispose>=1),'Mode switch disposes prepared MAIN instance');
+  revoked=false;await change({type:'SET_PROCESSING_MODE',processingMode:'worker'});await sync();assert.equal(await page.evaluate(()=>__KKGR_MODULE_RUNTIME__.mode),'worker');assert.equal(apiCalls,preparedCalls);assert(await page.evaluate(()=>moduleCallbacks.dispose>=1),'Mode switch disposes prepared MAIN instance');
  }
  assert.deepEqual(errors,[]);await cdp.detach();await context.close();console.log('PASS module execution '+(mobile?'touch':'desktop')+(baseline?' baseline':' candidate'));
  }
