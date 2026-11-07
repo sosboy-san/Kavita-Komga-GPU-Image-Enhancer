@@ -75,8 +75,8 @@ async function paint(tabId,status,c,urlHint=null) {
  const tab=await chrome.tabs.get(tabId).catch(()=>null);
  if(!tab||actionPaintSequence.get(tabId)!==sequence)return;
  const registered=c.sites.some(site=>Sites.matches(site,tab.url||urlHint||''));
- const readerAction=registered&&c.sites.some(site=>Sites.reader(site,tab.url||urlHint||''));
- await chrome.action.setPopup({tabId,popup:mobileAction||readerAction?'':'ui/popup.html'});
+ // Desktop toolbar always opens the quick menu; reader settings are explicit.
+ await chrome.action.setPopup({tabId,popup:mobileAction?'':'ui/popup.html'});
  const icon=!registered?'unregistered':c.enabled?'registered-on':'registered-off';
  const locale=await moduleLocale(),state=locale==='ja'?(!registered?'未登録サイト':c.enabled?'登録済み・ON':'登録済み・OFF'):(!registered?'Unregistered site':c.enabled?'Registered · ON':'Registered · OFF');
  if(actionPaintSequence.get(tabId)!==sequence)return;
@@ -427,7 +427,7 @@ chrome.tabs.onUpdated.addListener((id,change,tab)=>{
 
 // DEV2 routing: site registration is separate from reader processing.
 const mobileAction=!!navigator.userAgentData?.mobile || /Android|iPhone|iPad/i.test(navigator.userAgent||'');
-async function configureAction(){await chrome.action.setPopup({popup:mobileAction?'':'ui/popup.html'});}
+async function configureAction(tabId){await chrome.action.setPopup({...(Number.isSafeInteger(tabId)?{tabId}:{}),popup:mobileAction?'':'ui/popup.html'});}
 configureAction().catch(()=>{});
 chrome.runtime.onInstalled.addListener(()=>configureAction().catch(()=>{}));
 chrome.runtime.onStartup.addListener(()=>{chrome.storage.local.remove('dev1SettingsTabId');configureAction().catch(()=>{});});
@@ -458,7 +458,7 @@ async function openSettingsTab(targetTabId=null,section='',mobileRoute=false){
  await chrome.storage.local.set({dev1SettingsTabId:tab.id});context.settingsTabId=tab.id;await chrome.storage.session.set({dev2Launch:context});return {ok:true,settingsTabId:tab.id};
 }
 async function readerTabs(){const c=await config(),all=await chrome.tabs.query({}),result=[];for(const tab of all){if(!await permitted(c,tab.url)||!c.sites.some(site=>Sites.reader(site,tab.url)))continue;const u=new URL(tab.url);result.push({id:tab.id,windowId:tab.windowId,title:tab.title||u.pathname,site:u.origin});}return result;}
-chrome.action.onClicked.addListener(tab=>{if(!openingSettings)openingSettings=(async()=>{const c=await config();if(await tryReaderSettings(tab?.id))return;if(mobileAction)await openSettingsTab(tab?.id,'',true);else{await configureAction();try{await chrome.action.openPopup();}catch{await openSettingsTab(tab?.id);}}})().catch(()=>{}).finally(()=>openingSettings=null);});
+chrome.action.onClicked.addListener(tab=>{if(!openingSettings)openingSettings=(async()=>{if(mobileAction)await openSettingsTab(tab?.id,'',true);else{await configureAction(tab?.id);try{await chrome.action.openPopup();}catch{await openSettingsTab(tab?.id);}}})().catch(()=>{}).finally(()=>openingSettings=null);});
 chrome.tabs.onRemoved.addListener(async id=>{const saved=await chrome.storage.local.get('dev1SettingsTabId');if(saved.dev1SettingsTabId===id)await chrome.storage.local.remove('dev1SettingsTabId');});
 
 // Embedded settings retain extension APIs, but are bound to one permitted reader document.
