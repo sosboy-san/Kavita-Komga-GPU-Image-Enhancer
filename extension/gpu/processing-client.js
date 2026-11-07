@@ -29,7 +29,8 @@
   }
   // Reader Core selects the provider before the asynchronous settings echo arrives.
   // Validate the renderer this job executes, rather than the settings mirror.
-  const selected=runtime?.slots,selectionChanged=selected&&(provider!==selected.renderer||(slots.pre||null)!==selected.pre||(slots.post||null)!==selected.post);
+  // An omitted optional filter slot and an explicit null both mean OFF.
+  const selected=runtime?.slots,selectionChanged=selected&&(provider!==selected.renderer||(slots.pre||null)!==(selected.pre||null)||(slots.post||null)!==(selected.post||null));
   if(runtime&&(runtime.mode!==mode||selectionChanged))throw fail('ANALYSIS_CANCELLED','Module selection changed');
   if(runtime&&!runtime.ready)throw fail('MODULE_RUNTIME_UNAVAILABLE',runtime.errors?.[0]?.message||'Module runtime is not ready');
   if(packages.length&&!runtime)throw fail('MODULE_RUNTIME_UNAVAILABLE','Module selection is not initialized');
