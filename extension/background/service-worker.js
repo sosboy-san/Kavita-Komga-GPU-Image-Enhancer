@@ -120,7 +120,7 @@ async function hello(sender) {
   providerInjection=providerInjection.catch(()=>{}).then(async()=>{
   c=await config();
   const loaded=await execute({target:{tabId:sender.tab.id,documentIds:[sender.documentId]},
-    world:'MAIN',func:()=>{if((globalThis.__KKGR_CORE__||globalThis.__KKGR_PROCESSING__)&&globalThis.__KKGR_PROCESSING__?.moduleRuntimeVersion!==4){globalThis.__KKGR_PROCESSING__?.cancelAll();globalThis.__KKGR_CORE__?.stop();throw Error('拡張更新後は読書タブを再読み込みしてください。');}if(globalThis.__KKGR_CORE__&&!globalThis.__KKGR_DEV4_1_4_READY__)throw Error('DEV4への更新後は読書タブを再読み込みしてください。');return !!globalThis.__KKGR_CORE__&&!!globalThis.__KKGR_DEV4_1_4_READY__;}});
+    world:'MAIN',func:()=>{if((globalThis.__KKGR_CORE__||globalThis.__KKGR_PROCESSING__)&&globalThis.__KKGR_PROCESSING__?.moduleRuntimeVersion!==5){globalThis.__KKGR_PROCESSING__?.cancelAll();globalThis.__KKGR_CORE__?.stop();throw Error('拡張更新後は読書タブを再読み込みしてください。');}if(globalThis.__KKGR_CORE__&&!globalThis.__KKGR_DEV4_1_4_READY__)throw Error('DEV4への更新後は読書タブを再読み込みしてください。');return !!globalThis.__KKGR_CORE__&&!!globalThis.__KKGR_DEV4_1_4_READY__;}});
   if(!loaded[0]?.result) {
     const target={tabId:sender.tab.id,documentIds:[sender.documentId]};
     const runFiles=files=>withDeadline(chrome.scripting.executeScript({target,world:'MAIN',files}));

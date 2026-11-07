@@ -61,6 +61,6 @@
   }catch(e){D?.event(token,{timings:{processingTotalMs:performance.now()-context.queuedAt}});D?.finish(token,e.code==='ANALYSIS_CANCELLED'?'cancelled':'failed',null,e);throw e;}
  }
  const start=(...args)=>{const jobGeneration=generation,context={...(args[9]||{}),queuedAt:performance.now(),id:'job-'+(++counter)};args.length=9;args[7]=JSON.parse(JSON.stringify(args[7]||{}));args[8]=!!args[8];context.token=globalThis.__KKGR_DIAGNOSTICS__?.begin(context.id,args[1]?.currentSrc||args[1]?.src||args[1],[args[2],args[3]],[args[4],args[5]],args[7],context.role);globalThis.__KKGR_DIAGNOSTICS__?.sourceTiming(context.token,args[1]);globalThis.__KKGR_DIAGNOSTICS__?.event(context.token,{mimeType:args[6]});const job=serial.catch(()=>{}).then(()=>execute(...args,jobGeneration,context));serial=job;return job;};
- globalThis.__KKGR_PROCESSING__=Object.freeze({moduleRuntimeVersion:4,start,cancelAll,retry(){failures.clear();cancelAll();},diagnostics:()=>({failures:failures.size,phase:lastPhase})});
+ globalThis.__KKGR_PROCESSING__=Object.freeze({moduleRuntimeVersion:5,start,cancelAll,retry(){failures.clear();cancelAll();},diagnostics:()=>({failures:failures.size,phase:lastPhase})});
  globalThis.addEventListener?.('pagehide',cancelAll);
 })();

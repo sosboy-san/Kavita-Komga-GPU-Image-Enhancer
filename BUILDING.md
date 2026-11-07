@@ -38,6 +38,8 @@ The execution fixture also invalidates the isolated world's runtime API after pr
 
 The SPA fixture uses the production service worker, MAIN adapter, isolated bridge, Reader Core and real GPU/Worker pipeline together. It enters the reader from a title page twice without reloading, checks processed Blob display, selected renderer/output dimensions, and verifies no `[crisp-images]` warnings. Its 16 conditions cover Kavita/Komga, desktop/touch viewports, Worker/speed modes and built-in/optional Lanczos3 renderers, with the packaged USM filter. Chrome APIs and server responses are fixtures; this does not replace installed-extension tests on physical devices.
 
+Run `GPUIE_VERIFY_CONTROLS=1 TEST_CHROME=/path/to/chromium node tests/reader-spa-runtime-browser.cjs` to verify live background UI updates in both modes. This checks displayed pixel changes for USM, forced ink color and manual paper restoration, renderer changes, and an update delivered while an earlier handshake's STATUS response is deliberately held. Explicit PING/preparation requests must fetch a fresh configuration after any older handshake; joining the older result can lose a saved setting change.
+
 This fixture is not a replacement for installed-extension tests in Chrome or Android Edge. The historical usm-memory-browser.cjs comparison additionally requires its original pre-optimization source at ../phase3-active-fix/extension/gpu/usm.js; that source is not in this repository.
 
 ## Introduction page
