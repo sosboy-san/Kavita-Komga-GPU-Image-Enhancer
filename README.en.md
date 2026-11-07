@@ -199,11 +199,13 @@ Read the module author's instructions and cautions in its Info panel.
 
 ### Return to reading from detailed settings
 
-When opened from a reading tab, the top-left back control returns to that tab and closes the settings tab. When opened independently, it becomes a close control. Unapplied edits trigger a confirmation.
+While reading, quick controls open detailed settings over the same reader page. The desktop toolbar icon first opens its quick menu, where you can select detailed settings. On Android, the toolbar icon opens detailed settings directly while reading. Choose **Return to reader** at the top left to close the panel and resume the same page. Reader fullscreen is preserved.
+
+If the reader connection fails, or settings are opened outside a reader, the existing settings tab is used. Its back control returns to the original reader tab and closes settings; independently opened settings have a close control. Unapplied edits trigger a confirmation.
 
 ### Change the language
 
-Choose Japanese, English, or Automatic. Automatic follows the browser language and uses English for unsupported languages. Confirming and saving a language change reloads the settings tab.
+Choose Japanese, English, or Automatic. Automatic follows the browser language and uses English for unsupported languages. Confirming and saving a language change reloads only the settings UI, leaving the reader page in place.
 
 External modules use their own translations. Items without a translation for the selected language fall back to English.
 
