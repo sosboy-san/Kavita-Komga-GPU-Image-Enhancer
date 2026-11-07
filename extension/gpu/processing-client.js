@@ -21,6 +21,15 @@
   const slots=snapshot.filters||{},useRenderer=provider!=='browser'&&(sw!==dw||sh!==dh),builtin={lohalo:'lohalo-jr',nohalo:'nohalo-jr'};
   const plan={pre:slots.pre||null,renderer:useRenderer?(builtin[provider]||provider):null,post:slots.post||null};
   const packages=[...new Set([plan.pre,plan.renderer,plan.post].filter(Boolean))].map(id=>globalThis.__KKGR_PACKAGE_SOURCES__?.[id]).filter(Boolean);
+  const runtime=globalThis.__KKGR_MODULE_RUNTIME__;
+  if(runtime&&(!runtime.ready||runtime.mode!==mode))throw fail('MODULE_RUNTIME_UNAVAILABLE',runtime.errors?.[0]?.message||'Module runtime is not ready');
+  if(packages.length&&!runtime)throw fail('MODULE_RUNTIME_UNAVAILABLE','Module selection is not initialized');
+  if(runtime?.needsUserScripts){
+   const authorize=globalThis.__KKGR_PLATFORM__?.authorizeModules;if(!authorize)throw fail('MODULE_ACCESS_REVOKED','Module authorization bridge unavailable');
+   try{const result=await authorize({runtimeKey:runtime.key,mode,packages:packages.map(p=>({id:p.id,stamp:p.stamp}))});if(!result?.ok)throw Error('Module access revoked');}
+   catch(e){cancelAll();throw fail('MODULE_ACCESS_REVOKED',String(e.message));}
+   if(globalThis.__KKGR_MODULE_RUNTIME__!==runtime||!runtime.ready)throw fail('ANALYSIS_CANCELLED','Module runtime changed');
+  }
   for(const id of [plan.pre,plan.post])if(id&&!globalThis.__KKGR_BUILTIN_FILTER_MODULES__?.[id]&&!packages.some(p=>p.id===id))throw fail('INVALID_DESCRIPTOR','Filter source unavailable: '+id);
   if(!sources.has(source))sources.set(source,++sourceCounter);
   const key=JSON.stringify([mode,provider,source?.currentSrc||source?.src||sources.get(source),sw,sh,dw,dh,type,type==='image/jpeg'?0.9:1,plan,snapshot.filterParameters,packages.map(p=>[p.id,p.stamp]),timeoutMs,snapshot.processingRetryRevision||0]);
@@ -45,6 +54,6 @@
   }catch(e){D?.event(token,{timings:{processingTotalMs:performance.now()-context.queuedAt}});D?.finish(token,e.code==='ANALYSIS_CANCELLED'?'cancelled':'failed',null,e);throw e;}
  }
  const start=(...args)=>{const jobGeneration=generation,context={...(args[9]||{}),queuedAt:performance.now(),id:'job-'+(++counter)};args.length=9;args[7]=JSON.parse(JSON.stringify(args[7]||{}));args[8]=!!args[8];context.token=globalThis.__KKGR_DIAGNOSTICS__?.begin(context.id,args[1]?.currentSrc||args[1]?.src||args[1],[args[2],args[3]],[args[4],args[5]],args[7],context.role);globalThis.__KKGR_DIAGNOSTICS__?.sourceTiming(context.token,args[1]);globalThis.__KKGR_DIAGNOSTICS__?.event(context.token,{mimeType:args[6]});const job=serial.catch(()=>{}).then(()=>execute(...args,jobGeneration,context));serial=job;return job;};
- globalThis.__KKGR_PROCESSING__=Object.freeze({start,cancelAll,retry(){failures.clear();cancelAll();},diagnostics:()=>({failures:failures.size,phase:lastPhase})});
+ globalThis.__KKGR_PROCESSING__=Object.freeze({moduleRuntimeVersion:1,start,cancelAll,retry(){failures.clear();cancelAll();},diagnostics:()=>({failures:failures.size,phase:lastPhase})});
  globalThis.addEventListener?.('pagehide',cancelAll);
 })();

@@ -17,7 +17,14 @@
   const applyAppearance=value=>{document.documentElement.setAttribute('data-kkgr-ui-appearance',['Auto','Light','Dark'].includes(value)?value:'Auto');document.dispatchEvent(new CustomEvent('kkgr-ui-appearance'));};
   chrome.storage.local.get('uiAppearance').then(v=>applyAppearance(v.uiAppearance)).catch(()=>{});
   chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&changes.uiAppearance)applyAppearance(changes.uiAppearance.newValue);});
-  let alive=true;
+  let alive=true,accessTimer=null,accessState=null,checkingAccess=false;
+  function watchAccess(state){if(state!==undefined)accessState=state;clearInterval(accessTimer);accessTimer=null;if(accessState?.active&&accessState?.allowed&&accessState?.needsUserScripts)accessTimer=setInterval(checkAccess,1000);}
+  function invalidateModules(error){watchAccess(null);window.postMessage({channel:CHANNEL,from:'bridge',session,type:'MODULE_RUNTIME_INVALIDATED',error},location.origin);}
+  async function checkAccess(){if(checkingAccess||!accessState)return;checkingAccess=true;const state=accessState;try{const r=await chrome.runtime.sendMessage({type:'CHECK_MODULE_ACCESS',runtimeKey:state.key});if(accessState===state&&!r?.ok)invalidateModules(r?.error||'Module access revoked');}catch(e){if(accessState===state)invalidateModules(String(e.message));}finally{checkingAccess=false;}}
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkAccess();});
+  window.addEventListener('focus',checkAccess);
+  window.addEventListener('pageshow',()=>{watchAccess();checkAccess();});
+  window.addEventListener('pagehide',()=>{clearInterval(accessTimer);accessTimer=null;});
   let workerFrame=null,workerReady=false;const workerPorts=[];
   const sendWorkerPort=port=>workerFrame.contentWindow.postMessage({type:'KKGR_WORKER_CONNECT'},'*',[port]);
   window.addEventListener('message',e=>{
@@ -34,6 +41,9 @@
   });
   window.addEventListener('message',e=>{
     const m=e.data,s=m?.status;if(e.source===window&&e.origin===location.origin&&m?.channel===CHANNEL&&m.from==='main'&&m.session===session&&m.type==='DIAGNOSTICS'){const p=pending.get(m.id);if(p){clearTimeout(p.timer);pending.delete(m.id);if(m.error){p.reject(Error(m.error));return;}let json;try{json=JSON.stringify(m.diagnostics);}catch{}p.resolve(json&&json.length<=5*1024*1024?JSON.parse(json):null);}return;}
+    if(e.source===window&&e.origin===location.origin&&m?.channel===CHANNEL&&m.from==='main'&&m.session===session&&m.type==='AUTHORIZE_MODULE_JOB'){
+      chrome.runtime.sendMessage({type:'AUTHORIZE_MODULE_JOB',runtimeKey:m.runtimeKey,mode:m.mode,packages:m.packages}).then(result=>{if(!result?.ok)invalidateModules(result?.error||'Module access revoked');window.postMessage({channel:CHANNEL,from:'bridge',session,type:'MODULE_AUTHORIZATION_RESULT',changeId:m.changeId,result},location.origin);}).catch(e=>{invalidateModules(String(e.message));window.postMessage({channel:CHANNEL,from:'bridge',session,type:'MODULE_AUTHORIZATION_RESULT',changeId:m.changeId,result:{error:String(e.message)}},location.origin);});return;
+    }
     if(e.source===window && e.origin===location.origin && m?.channel===CHANNEL &&
        m.from==='main' && m.session===session && m.type==='SETTING' &&
        ['developerMode','diagnosticRecording','diagnosticClearRevision','enabled','hud','renderer','hudMode','hudPosition','disabledRenderers','rendererCandidates','filterCandidates','filters','filterParameters','kavitaAutoFullscreen','kavitaPageTurnAnimation','processingMode','outputFormat','blobBudgetMb','decodedForward','decodedBack','processingTimeoutMs','processingRetryRevision'].includes(m.key)) {
@@ -60,10 +70,11 @@
       if(m.type==='OPEN_READER_SETTINGS')return globalThis.__KKGR_READER_SETTINGS__?.open()||{ok:false};
       if(m.type==='REANALYZE')return request('REANALYZE',{stage:m.stage,filterId:m.filterId});
       if(m.type==='DIAGNOSTICS')return request('DIAGNOSTICS');
-      if(m.type==='STOP'){globalThis.__KKGR_READER_SETTINGS__?.close();return request('STOP');}
+      if(m.type==='STOP'){watchAccess(null);invalidateModules('Site access revoked');globalThis.__KKGR_READER_SETTINGS__?.close();return request('STOP');}
       const config=m.type==='PING'?await chrome.runtime.sendMessage({type:'HELLO'}):m.config;
       if(config?.error) throw new Error(config.error);
       if(!config?.allowed) return request('STOP');
+      watchAccess(config.moduleRuntime);
       await request('HELLO');
       return request('CONFIG',{appVersion:config.appVersion,revision:config.revision,enabled:config.enabled,developerMode:config.developerMode,diagnosticRecording:config.diagnosticRecording,diagnosticClearRevision:config.diagnosticClearRevision,hud:config.hud,renderer:config.renderer,hudMode:config.hudMode,hudPosition:config.hudPosition,uiLanguage:config.uiLanguage,disabledRenderers:config.disabledRenderers,quick:config.quick,rendererOrder:config.rendererOrder,filters:config.filters,kavitaAutoFullscreen:config.kavitaAutoFullscreen,kavitaPageTurnAnimation:config.kavitaPageTurnAnimation,processingMode:config.processingMode,outputFormat:config.outputFormat,processingTimeoutMs:config.processingTimeoutMs,processingRetryRevision:config.processingRetryRevision,filterParameters:config.filterParameters,filterCandidates:config.filterCandidates,filterCatalog:config.filterCatalog});
     })().then(status=>sendResponse(m.type==='OPEN_READER_SETTINGS'?status:['DIAGNOSTICS','REANALYZE'].includes(m.type)?{ok:true,diagnostics:status}:{ok:true,status}),e=>sendResponse({ok:false,error:e.message}));
@@ -73,6 +84,7 @@
     const config=await chrome.runtime.sendMessage({type:'HELLO'});
     if(config?.error) throw new Error(config.error);
     if(!config?.allowed) return;
+    watchAccess(config.moduleRuntime);
     await request('HELLO');
     const status=await request('CONFIG',{appVersion:config.appVersion,revision:config.revision,enabled:config.enabled,developerMode:config.developerMode,diagnosticRecording:config.diagnosticRecording,diagnosticClearRevision:config.diagnosticClearRevision,hud:config.hud,renderer:config.renderer,hudMode:config.hudMode,hudPosition:config.hudPosition,uiLanguage:config.uiLanguage,disabledRenderers:config.disabledRenderers,quick:config.quick,rendererOrder:config.rendererOrder,filters:config.filters,kavitaAutoFullscreen:config.kavitaAutoFullscreen,kavitaPageTurnAnimation:config.kavitaPageTurnAnimation,processingMode:config.processingMode,outputFormat:config.outputFormat,processingTimeoutMs:config.processingTimeoutMs,processingRetryRevision:config.processingRetryRevision,filterParameters:config.filterParameters,filterCandidates:config.filterCandidates,filterCatalog:config.filterCatalog});
     await chrome.runtime.sendMessage({type:'STATUS',status});

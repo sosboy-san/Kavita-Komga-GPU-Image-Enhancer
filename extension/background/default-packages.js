@@ -18,7 +18,7 @@
    }
    state.defaultFiltersSeeded=1;state.revision++;
    const config={...(saved.config||{})},candidates={pre:[],post:[],...config.filterCandidates};
-   for(const stage of ['pre','post'])candidates[stage]=[...new Set([...candidates[stage],...added.filter(d=>d.supportedStages.includes(stage)).map(d=>d.id)])].slice(0,5);
+   for(const stage of ['pre','post'])candidates[stage]=[...new Set([...candidates[stage],...added.filter(d=>d.supportedStages.includes(stage)).map(d=>d.id)])].slice(0,globalThis.__KKGR_CANDIDATE_POLICY__?.candidateLimit||5);
    config.filterCandidates=candidates;
    await storage.set({managedRenderers:state,config});
   }
