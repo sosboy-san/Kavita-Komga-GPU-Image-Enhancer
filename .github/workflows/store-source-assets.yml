@@ -1,0 +1,18 @@
+name: Attach store source and checksums
+on:
+  push:
+    branches: [release/store-source-assets-227f4ea]
+permissions:
+  contents: write
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Attach verified source and updated checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload v0.9.6-beta .release-artifacts/GPUIE-Chrome-Web-Store-0.9.6-Source-227f4ea.zip --clobber --repo "$GITHUB_REPOSITORY"
+          gh release upload v0.9.6-beta .release-artifacts/v0.9.6-beta/SHA256SUMS.txt --clobber --repo "$GITHUB_REPOSITORY"
+          gh release upload v0.9.5-beta .release-artifacts/v0.9.5-beta/SHA256SUMS.txt --clobber --repo "$GITHUB_REPOSITORY"
