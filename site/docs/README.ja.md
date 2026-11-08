@@ -22,16 +22,16 @@ Kavitaの追加機能2点は **詳細設定 → オプション → 基本設定
 アニメーションは縦スクロール・Webtoon・画像分割などの対象外モード、動きの抑制設定、ページ方向を確認できない場合には省略します。
 
 詳細設定はPC・Android共通で、横幅600 CSS px以上なら中央枠（最大820×680 CSS px）、600未満なら全面表示です。回転やFold開閉にも追従します。全画面中も、設定を閉じると全画面の読書へ戻ります。
-この版から公開CRXの署名鍵と拡張IDが新しくなります。旧公開版・テスト版とは別の拡張として導入し、登録サイト・設定を再設定してください。同時使用を避け、導入後は開いている読書タブを一度再読み込みしてください。
+ストア版は手動配布版・テスト版と拡張IDが異なります。以前の拡張を無効にし、ストア版で登録サイトと設定を再設定してください。
 
 
 ## まず使うには
 
-1. **本体をインストールする。** [Releaseページ](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.6-beta)から本体ZIPをダウンロードして展開し、Chromeへ読み込みます。[インストール手順](#ダウンロードとインストール)
+1. **本体をインストールする。** [Chromeウェブストア](https://chromewebstore.google.com/detail/kavita-komga-gpu-image-en/figjcigclokemfffhialoccnodjghjoe)から追加します。[インストール手順](#ダウンロードとインストール)
 2. **読むサイトを登録する。** Kavita・Komgaのタブを開き、拡張アイコンから登録して、サイトへのアクセスを許可します。[最初の設定](#最初の設定)
 3. **LoHalo Jr.を選んで読む。** 読書画面のクイック操作でレンダラーを切り替え、見え方を比べてみてください。初期状態はBrowserです。[基本的な使い方](#基本的な使い方)
 
-ここまでは本体だけで使えます。紙地復元や線色・濃度調整も試したくなったら、[追加モジュール](#追加モジュールを使う)を読み込んでください。キャッシュなどの細かな設定は、必要に応じて調整できます。
+紙地復元・線色調整・USMは同梱され、初期適用はOFFです。削除もできます。さらに追加する場合は[追加モジュール](#追加モジュールを使う)を参照してください。キャッシュなどの細かな設定は、必要に応じて調整できます。
 
 ## できること
 
@@ -108,33 +108,28 @@ Paper Restorationは、古い漫画の黄ばんだ紙を白い紙に近づける
 
 ※Komgaの新GUIは未検証です。
 
-GPU処理にはWebGL2などの対応機能が必要です。拡張機能の最低Chromeバージョン指定は135です。Androidでは拡張機能とCRXの導入に対応したブラウザーが必要です。
+GPU処理にはWebGL2などの対応機能が必要です。拡張機能の最低Chromeバージョン指定は135です。Androidでのストア版の導入・動作は未確認です。
 
-## [ダウンロードとインストール](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.6-beta)
+## ダウンロードとインストール
 
-| 配布物 | 用途 |
-| --- | --- |
-| 本体ZIP | PCで展開して読み込む拡張機能 |
-| 本体CRX | Androidの確認済みブラウザー向け |
-| モジュールパックZIP | 任意で追加するフィルター・レンダラー |
-
-追加モジュールは必須ではありません。本体にはLoHalo Jr.、NoHalo Jr.、GPUアンシャープマスクが組み込まれています。公式リポジトリは[Kavita-Komga-GPU-Image-Enhancer](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer)です。[Releaseページ](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.6-beta)から本体ZIP・CRX・追加モジュールをダウンロードできます。
+拡張機能は[Chromeウェブストア](https://chromewebstore.google.com/detail/kavita-komga-gpu-image-en/figjcigclokemfffhialoccnodjghjoe)からインストールしてください。GitHub Releaseにはソースコード・追加モジュールのソース・検証資料を残し、本体のインストール用ZIP・CRXの配布は終了しました。
 
 ### PC：Chrome
 
-1. [Releaseページ](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases/tag/v0.9.6-beta)から本体ZIPをダウンロードし、フォルダーへ展開します。
-2. Chromeで拡張機能の管理画面を開きます。
-3. デベロッパーモードを有効にします。
-4. 「パッケージ化されていない拡張機能を読み込む」から、manifest.jsonが入っているフォルダーを選びます。
-5. 必要に応じて、ツールバーに拡張アイコンを固定します。
+1. [ChromeウェブストアのGPUIEページ](https://chromewebstore.google.com/detail/kavita-komga-gpu-image-en/figjcigclokemfffhialoccnodjghjoe)を開きます。
+2. 「Chromeに追加」を選び、表示された権限を確認して追加します。
+3. 必要に応じて、ツールバーに拡張アイコンを固定します。
+4. Kavita・Komgaのタブを開き、サイトを登録します。
 
-外側の配布一式ZIPに本体ZIPが入っている場合は、本体ZIPも展開してください。選ぶのはソース全体のフォルダーではなく、manifest.jsonが直接入っている拡張機能のフォルダーです。
+ストア版の拡張IDは `figjcigclokemfffhialoccnodjghjoe` です。手動配布版・テスト版から設定は自動移行されません。以前の拡張を無効にしてから、ストア版でサイトと設定を登録してください。
 
-### Android：Edge Canary
+### Android
 
-Android向けには本体CRXを用意しています。**Edge Canary 157.0.4333.0で、CRXの導入と動作を確認しています。**
+過去にEdge CanaryでCRXの導入・動作を確認しましたが、本体CRXの配布は終了しました。Androidでのストア版の導入・動作は未確認です。利用するブラウザーの拡張機能対応状況を確認してください。
 
-Canary版での試験的な利用となり、正式な対応を保証するものではありません。ブラウザーの更新によって、導入方法が変わったり、動作しなくなったりする場合があります。
+### ソースコード・追加モジュール
+
+[GitHub Release](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/releases)には対応するソースZIPと、追加モジュールのソースを残しています。GitHub標準の「Source code (zip / tar.gz)」もソースです。インストール用パッケージとは異なります。開発用の読み込み手順は[BUILDING.md](https://github.com/sosboy-san/Kavita-Komga-GPU-Image-Enhancer/blob/main/BUILDING.md)を参照してください。
 
 ### 外部モジュールを使う場合
 
