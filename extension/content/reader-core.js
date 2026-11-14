@@ -850,7 +850,9 @@
     kavitaAnchorPage=plan.id.number;kavitaChapterId=plan.id.chapter;
     const near=plan.near.filter(x=>x.key),wanted=new Set(near.map(x=>x.key));kavitaForwardKeys.clear();kavitaBackKeys.clear();
     for(const x of near)(x.distance>=0?kavitaForwardKeys:kavitaBackKeys).add(x.key);
-    const currentKeys=new Set(kavitaShownImages().map(x=>state.get(x)?.key).filter(Boolean));const splitKey=KavitaSplit.currentKey();if(splitKey)currentKeys.add(splitKey);
+    // The entire incoming spread is current even before each native img has
+    // committed its state.key. Keep its prepared decoded images through handoff.
+    const currentKeys=new Set([...(plan.currentKeys||[]),...kavitaShownImages().map(x=>state.get(x)?.key).filter(Boolean)]);const splitKey=KavitaSplit.currentKey();if(splitKey)currentKeys.add(splitKey);
     for(const [key,item]of kavitaAhead){item.direction=wanted.has(key)?near.find(x=>x.key===key).distance<0?'previous':'next':currentKeys.has(key)?'current':'history';if(!wanted.has(key)&&!currentKeys.has(key))item.decoded=null;}
     for(const [key,item]of historyLRU)if(KavitaPages.imageIdentity(key.split('|')[0])&&!wanted.has(key)&&!currentKeys.has(key))item.decoded=null;
     for(const rec of blobs.values())if(KavitaPages.imageIdentity(rec.key.split('|')[0])&&!wanted.has(rec.key)&&!currentKeys.has(rec.key))rec.decoded=null;

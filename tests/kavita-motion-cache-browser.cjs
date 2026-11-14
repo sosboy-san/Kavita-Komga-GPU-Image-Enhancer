@@ -70,7 +70,11 @@ const foundation=['ui/parameter-schema.js','ui/package-metadata.js','ui/analysis
   for(const n of [start+step,start]){
    const before=await page.evaluate(()=>({starts:motion.status().starts,jobs:jobs.length}));
    await page.evaluate(()=>{globalThis.frames=[];globalThis.sampling=true;function sample(){const layer=document.querySelector('[data-gpuie-motion]');if(layer)frames.push([...layer.querySelectorAll('img')].map(i=>({url:i.src,pixel:pixel(i)})));if(sampling)requestAnimationFrame(sample);}requestAnimationFrame(sample);});
-   await page.evaluate(async({n,hold})=>showSpread(n,hold),{n,hold:n===start+step?n+step-1:n});
+   const entered=await page.evaluate(async({n,hold})=>{await showSpread(n,hold);await Promise.resolve();await Promise.resolve();return motion.status();},{n,hold:n===start+step?n+step-1:n});
+   if(n===start+step){
+    assert.equal(entered.waiting,false,'An unseen 8/8-ready spread must not lose its decoded image and wait for the native binding');
+    assert.equal(entered.running,true,'Use the prepared unseen spread immediately');
+   }
    await page.waitForFunction(count=>motion.status().starts===count+1,before.starts,{timeout:5000});
    const frozen=await page.evaluate(()=>[...document.querySelectorAll('[data-gpuie-motion] img')].map(i=>i.src));
    assert.equal(frozen.length,step*2);assert(frozen.every(u=>u.startsWith('blob:')),'Borrow prepared images, never the native source');
