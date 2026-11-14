@@ -850,7 +850,9 @@
     kavitaAnchorPage=plan.id.number;kavitaChapterId=plan.id.chapter;
     const near=plan.near.filter(x=>x.key),wanted=new Set(near.map(x=>x.key));kavitaForwardKeys.clear();kavitaBackKeys.clear();
     for(const x of near)(x.distance>=0?kavitaForwardKeys:kavitaBackKeys).add(x.key);
-    const currentKeys=new Set(kavitaShownImages().map(x=>state.get(x)?.key).filter(Boolean));const splitKey=KavitaSplit.currentKey();if(splitKey)currentKeys.add(splitKey);
+    // The entire incoming spread is current even before each native img has
+    // committed its state.key. Keep its prepared decoded images through handoff.
+    const currentKeys=new Set([...(plan.currentKeys||[]),...kavitaShownImages().map(x=>state.get(x)?.key).filter(Boolean)]);const splitKey=KavitaSplit.currentKey();if(splitKey)currentKeys.add(splitKey);
     for(const [key,item]of kavitaAhead){item.direction=wanted.has(key)?near.find(x=>x.key===key).distance<0?'previous':'next':currentKeys.has(key)?'current':'history';if(!wanted.has(key)&&!currentKeys.has(key))item.decoded=null;}
     for(const [key,item]of historyLRU)if(KavitaPages.imageIdentity(key.split('|')[0])&&!wanted.has(key)&&!currentKeys.has(key))item.decoded=null;
     for(const rec of blobs.values())if(KavitaPages.imageIdentity(rec.key.split('|')[0])&&!wanted.has(rec.key)&&!currentKeys.has(rec.key))rec.decoded=null;
@@ -1951,7 +1953,13 @@
         if(jobEpoch===rendererEpoch&&s.origUrl===original){const generated=s.blobUrl;if(generated&&generated!==previous.blobUrl){if((img.currentSrc||img.src)===generated)try{await setSrc(img,previous.blobUrl||original);}catch{}if(s.cache.get(key)===generated){if(previous.cache)s.cache.set(key,previous.cache);else s.cache.delete(key);}const rec=blobs.get(generated);if(rec){blobs.delete(generated);blobBytes-=rec.bytes;}releaseProcessedURL(generated);}s.blobUrl=previous.blobUrl;s.key=previous.key;s.report=previous.report;s.presentation=previous.presentation;}
         throw e;
       }
-      if(e.code==='ANALYSIS_CANCELLED'&&jobEpoch!==rendererEpoch){s.rerun=true;return;}
+      if(e.code==='ANALYSIS_CANCELLED'){
+        if(jobEpoch!==rendererEpoch){s.rerun=true;return;}
+        if(s.blobUrl){try{await setSrc(img,s.origUrl);s.blobUrl=null;}catch{}}
+        s.key=null;s.status='waiting for current processing state';
+        if(globalThis.__KKGR_MODULE_RUNTIME__?.ready===false)s.rerun=false;
+        hudState(s,{phase:'waiting',stage:'renderer',issue:null});return;
+      }
       if(e.code?.startsWith('ANALYSIS_')||['SOURCE_SAMPLE_FAILED','PROCESSING_TIMEOUT','ENCODE_TIMEOUT','GPU_TIMEOUT','MEMORY_BUDGET_EXCEEDED','ALLOCATION_FAILED','FRAMEBUFFER_INCOMPLETE','SIZE_LIMIT'].includes(e.code)){
         if(s.blobUrl){try{await setSrc(img,s.origUrl);s.blobUrl=null;}catch{}}
       }
@@ -3392,8 +3400,10 @@
         const id=KavitaPages?.imageIdentity(source),page=id&&KavitaPages.peek(source)?.pages?.[id.number];
         const nw=page?.width||(s?.origUrl===source?s.nw:0),nh=page?.height||(s?.origUrl===source?s.nh:0);
         const t=nw&&nh?targetSize(img,nw,nh):null;
-        const result=t&&completedResult(`${source}|${t.w}x${t.h}|${rendererCacheKey(quality)}`,false);
-        if(result?.url&&result.decoded){url=result.url;bytes=result.item?.bytes||0;ready=true;}
+        // Keep using the prepared image as ownership moves into the visible cache.
+        // snapshot() borrows this exact URL until the slide is finished/disposed.
+        const result=t&&completedResult(`${source}|${t.w}x${t.h}|${rendererCacheKey(quality)}`);
+        if(result?.url){url=result.url;bytes=result.item?.bytes||0;ready=result.decoded;}
       }
       return {source,url,bytes,ready,signature};
     },

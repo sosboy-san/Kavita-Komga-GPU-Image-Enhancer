@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Kavita & Komga GPU Image Enhancer",
-  "version": "0.9.6",
-  "version_name": "Beta 0.9.6",
+  "version": "0.9.7",
+  "version_name": "Beta 0.9.7",
   "minimum_chrome_version": "135",
   "description": "GPU image processing for Kavita and Komga with public GPU API 1 renderers and filters.",
   "permissions": [

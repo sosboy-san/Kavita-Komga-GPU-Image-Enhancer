@@ -1,13 +1,14 @@
 // Runs in the isolated extension world. Reader image state is never touched.
 (() => {
  'use strict';
- const version='responsive-4',previous=globalThis.__KKGR_READER_SETTINGS__;
+ const version='responsive-5',previous=globalThis.__KKGR_READER_SETTINGS__;
  if(previous?.version===version)return;
  // A reader SPA may outlive an extension update. Retire its previous opaque
  // controller (or orphaned dialog) before installing the current presentation.
  try{previous?.close?.();}catch{}
  for(const stale of document.querySelectorAll('[data-gpu-reader-settings]'))stale.remove();
  const channel='kkgr-embedded-settings';
+ const sendRuntime=async message=>chrome.runtime.sendMessage(message);
  let current=null,opening=null,generation=0;
  const reader=()=>document.querySelector('app-manga-reader,.v-carousel,.html-reader');
  const ja=()=>navigator.language.startsWith('ja');
@@ -16,7 +17,7 @@
   const value=current;current=null;if(!value)return;
   clearTimeout(value.timer);value.observer.disconnect();value.abort.abort();
   value.dialog.close();value.host.remove();
-  chrome.runtime.sendMessage({type:'CLOSE_EMBEDDED_SETTINGS',token:value.token}).catch(()=>{});
+  sendRuntime({type:'CLOSE_EMBEDDED_SETTINGS',token:value.token}).catch(()=>{});
   if(value.focus?.isConnected)value.focus.focus({preventScroll:true});
  }
  function requestClose(){if(current)current.frame.contentWindow.postMessage({channel,type:'REQUEST_CLOSE',token:current.token},current.origin);}
@@ -26,9 +27,9 @@
   const root=reader();if(!root)return {ok:false};
   const serial=++generation;
   opening=(async()=>{
-   const result=await chrome.runtime.sendMessage({type:'PREPARE_EMBEDDED_SETTINGS'});
+   const result=await sendRuntime({type:'PREPARE_EMBEDDED_SETTINGS'});
    if(result?.error)throw Error(result.error);
-   if(serial!==generation||!root.isConnected){if(result?.token)chrome.runtime.sendMessage({type:'CLOSE_EMBEDDED_SETTINGS',token:result.token}).catch(()=>{});return {ok:false};}
+   if(serial!==generation||!root.isConnected){if(result?.token)sendRuntime({type:'CLOSE_EMBEDDED_SETTINGS',token:result.token}).catch(()=>{});return {ok:false};}
    if(!result?.url||!result.token)throw Error('Settings unavailable');
    const host=document.createElement('div');host.setAttribute('data-gpu-reader-settings','');host.dataset.state='pending';
    const shadow=host.attachShadow({mode:'closed'}),style=document.createElement('style');

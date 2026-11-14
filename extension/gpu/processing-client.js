@@ -8,7 +8,7 @@
  function connect(){if(session)return Promise.resolve(session);if(connecting)return connecting;
   connecting=new Promise((resolve,reject)=>{const channel=new MessageChannel(),request='processing-'+(++counter),timer=setTimeout(()=>{channel.port1.close();reject(fail('WORKER_UNAVAILABLE','Processing worker unavailable'));},5000);
    channel.port1.onmessage=e=>{if(e.data?.type==='CONNECTED'){clearTimeout(timer);session=channel.port1;session.onmessage=onMessage;resolve(session);}else if(e.data?.error){clearTimeout(timer);reject(fail(e.data.error.code,e.data.error.message));}};channel.port1.start();
-   window.postMessage({channel:'kkgr-processing-connect',request},location.origin,[channel.port2]);
+   window.postMessage({channel:'kkgr-processing-connect',request,session:globalThis.__KKGR_PLATFORM__?.processingSession?.()},location.origin,[channel.port2]);
   }).finally(()=>{connecting=null;});return connecting;
  }
  function onMessage(e){const m=e.data;if(m.error&&!m.id){for(const p of pending.values()){clearTimeout(p.timer);p.reject(fail(m.error.code,m.error.message));}pending.clear();close();return;}const p=pending.get(m.id);if(!p)return;if(m.type==='DIAGNOSTIC'){globalThis.__KKGR_DIAGNOSTICS__?.event(p.token,m.event);return;}if(m.type==='PHASE'){globalThis.__KKGR_DIAGNOSTICS__?.event(p.token,{stage:m.stage,module:m.module,parameters:p.parameters?.[m.stage],action:m.action});p.phase={stage:m.stage,module:m.module,action:m.action};lastPhase=p.phase;if(m.stage==='encode'){clearTimeout(p.timer);p.timer=setTimeout(()=>{pending.delete(m.id);close();p.reject(fail('ENCODE_TIMEOUT','Image encoding exceeded 30 seconds'));},30000);}return;}
@@ -17,10 +17,29 @@
  }
  async function execute(provider,source,sw,sh,dw,dh,type,settings,_reserved=false,jobGeneration=generation,context={}){
   const D=globalThis.__KKGR_DIAGNOSTICS__,token=context.token,entered=performance.now();D?.event(token,{timings:{queueMs:entered-context.queuedAt}});try{
+  if(jobGeneration!==generation)throw fail('ANALYSIS_CANCELLED','Job cancelled');
   const snapshot=JSON.parse(JSON.stringify(settings||{})),timeoutMs=snapshot.processingTimeoutMs||10000,mode=snapshot.processingMode==='speed'?'speed':'worker';
   const slots=snapshot.filters||{},useRenderer=provider!=='browser'&&(sw!==dw||sh!==dh),builtin={lohalo:'lohalo-jr',nohalo:'nohalo-jr'};
   const plan={pre:slots.pre||null,renderer:useRenderer?(builtin[provider]||provider):null,post:slots.post||null};
   const packages=[...new Set([plan.pre,plan.renderer,plan.post].filter(Boolean))].map(id=>globalThis.__KKGR_PACKAGE_SOURCES__?.[id]).filter(Boolean);
+  let runtime=globalThis.__KKGR_MODULE_RUNTIME__;
+  if(runtime&&!runtime.ready&&!runtime.errors?.length&&globalThis.__KKGR_PLATFORM__?.ensureModuleRuntime){
+   await globalThis.__KKGR_PLATFORM__.ensureModuleRuntime();runtime=globalThis.__KKGR_MODULE_RUNTIME__;
+   if(jobGeneration!==generation||(runtime&&!runtime.ready&&!runtime.errors?.length))throw fail('ANALYSIS_CANCELLED','Module preparation pending');
+  }
+  // Reader Core selects the provider before the asynchronous settings echo arrives.
+  // Validate the renderer this job executes, rather than the settings mirror.
+  // An omitted optional filter slot and an explicit null both mean OFF.
+  const selected=runtime?.slots,selectionChanged=selected&&(provider!==selected.renderer||(slots.pre||null)!==(selected.pre||null)||(slots.post||null)!==(selected.post||null));
+  if(runtime&&(runtime.mode!==mode||selectionChanged))throw fail('ANALYSIS_CANCELLED','Module selection changed');
+  if(runtime&&!runtime.ready)throw fail('MODULE_RUNTIME_UNAVAILABLE',runtime.errors?.[0]?.message||'Module runtime is not ready');
+  if(packages.length&&!runtime)throw fail('MODULE_RUNTIME_UNAVAILABLE','Module selection is not initialized');
+  if(runtime?.needsUserScripts){
+   const authorize=globalThis.__KKGR_PLATFORM__?.authorizeModules;if(!authorize)throw fail('MODULE_ACCESS_REVOKED','Module authorization bridge unavailable');
+   try{const result=await authorize({runtimeKey:runtime.key,mode,packages:packages.map(p=>({id:p.id,stamp:p.stamp}))});if(!result?.ok)throw Error('Module access revoked');}
+   catch(e){if(globalThis.__KKGR_MODULE_RUNTIME__!==runtime||(jobGeneration!==generation&&runtime.ready))throw fail('ANALYSIS_CANCELLED','Module runtime changed');if(jobGeneration===generation)cancelAll();throw fail('MODULE_ACCESS_REVOKED',String(e.message));}
+   if(globalThis.__KKGR_MODULE_RUNTIME__!==runtime||!runtime.ready)throw fail('ANALYSIS_CANCELLED','Module runtime changed');
+  }
   for(const id of [plan.pre,plan.post])if(id&&!globalThis.__KKGR_BUILTIN_FILTER_MODULES__?.[id]&&!packages.some(p=>p.id===id))throw fail('INVALID_DESCRIPTOR','Filter source unavailable: '+id);
   if(!sources.has(source))sources.set(source,++sourceCounter);
   const key=JSON.stringify([mode,provider,source?.currentSrc||source?.src||sources.get(source),sw,sh,dw,dh,type,type==='image/jpeg'?0.9:1,plan,snapshot.filterParameters,packages.map(p=>[p.id,p.stamp]),timeoutMs,snapshot.processingRetryRevision||0]);
@@ -45,6 +64,6 @@
   }catch(e){D?.event(token,{timings:{processingTotalMs:performance.now()-context.queuedAt}});D?.finish(token,e.code==='ANALYSIS_CANCELLED'?'cancelled':'failed',null,e);throw e;}
  }
  const start=(...args)=>{const jobGeneration=generation,context={...(args[9]||{}),queuedAt:performance.now(),id:'job-'+(++counter)};args.length=9;args[7]=JSON.parse(JSON.stringify(args[7]||{}));args[8]=!!args[8];context.token=globalThis.__KKGR_DIAGNOSTICS__?.begin(context.id,args[1]?.currentSrc||args[1]?.src||args[1],[args[2],args[3]],[args[4],args[5]],args[7],context.role);globalThis.__KKGR_DIAGNOSTICS__?.sourceTiming(context.token,args[1]);globalThis.__KKGR_DIAGNOSTICS__?.event(context.token,{mimeType:args[6]});const job=serial.catch(()=>{}).then(()=>execute(...args,jobGeneration,context));serial=job;return job;};
- globalThis.__KKGR_PROCESSING__=Object.freeze({start,cancelAll,retry(){failures.clear();cancelAll();},diagnostics:()=>({failures:failures.size,phase:lastPhase})});
+ globalThis.__KKGR_PROCESSING__=Object.freeze({moduleRuntimeVersion:5,start,cancelAll,retry(){failures.clear();cancelAll();},diagnostics:()=>({failures:failures.size,phase:lastPhase})});
  globalThis.addEventListener?.('pagehide',cancelAll);
 })();

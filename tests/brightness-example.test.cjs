@@ -38,9 +38,9 @@ function metadata(code) {
   const second = metadata(edited);
   assert.equal(second.id, first.id);
   assert((await h.send({type: 'UPDATE_PACKAGE', packageId: first.id, metadata: second, code: edited})).ok);
-  assert.equal(h.data.managedRenderers.items.length, 1);
-  assert.equal(h.data.managedRenderers.items[0].metadata.version, '1.0.1');
-  assert.equal(h.data.managedRenderers.items[0].code, edited);
+  assert.equal(h.data.managedRenderers.items.filter(p=>p.metadata.id===first.id).length, 1);
+  assert.equal(h.data.managedRenderers.items.find(p=>p.metadata.id===first.id).metadata.version, '1.0.1');
+  assert.equal(h.data.managedRenderers.items.find(p=>p.metadata.id===first.id).code, edited);
   assert.equal(h.data.config.filterParameters.post[first.id].brightness, 0.2);
 
   const comparison = await box.harness();
@@ -48,6 +48,6 @@ function metadata(code) {
   comparison.ctx.chrome.tabs.query = async () => [];
   assert((await comparison.send({type: 'ADD_PACKAGE', metadata: first, code: source})).ok);
   assert((await comparison.send({type: 'ADD_PACKAGE', mode: 'additional', metadata: second, code: edited})).ok);
-  assert.equal(comparison.data.managedRenderers.items.length, 2);
+  assert.equal(comparison.data.managedRenderers.items.filter(p=>p.metadata.id===first.id).length, 2);
   console.log('PASS bilingual brightness example: import, duplicate rejection, update with retained settings, and side-by-side versions');
 })().catch(error => {console.error(error); process.exitCode = 1;});

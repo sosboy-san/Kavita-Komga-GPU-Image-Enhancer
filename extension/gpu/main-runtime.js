@@ -2,7 +2,7 @@
 (()=>{'use strict';if(globalThis.__KKGR_MAIN_PROCESSING__)return;
  let host=null,modules={},signature=null,resetRequested=false,running=false;
  const fail=(code,message)=>Object.assign(Error(message),{code});
- function reset(){host?.dispose();host=null;modules={};signature=null;resetRequested=false;}
+ function reset(){const previous=host;host=null;const instances=Object.values(modules);modules={};signature=null;resetRequested=false;for(const module of instances){try{previous?.disposeModule(module);}catch{/* Busy/lost contexts are finally released by host teardown. */}}previous?.dispose();}
  function encode(canvas,type){return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(fail('ENCODE_TIMEOUT','Image encoding exceeded 30 seconds')),30000);try{canvas.toBlob(blob=>{clearTimeout(timer);blob?resolve(blob):reject(fail('ENCODE_FAILED','Image encoding failed'));},type,type==='image/jpeg'?0.9:1);}catch(e){clearTimeout(timer);reject(e);}});}
  async function run(m,{signal,isCurrent=()=>true,report=null,phase=()=>{}}={}){
   const {source,sw,sh,dw,dh,plan,parameters,timeoutMs,settingsRevision,mimeType}=m,start=performance.now();let initializationMs=0,pipelineMs=0;

@@ -1,13 +1,14 @@
 'use strict';
-importScripts('site-model.js','../modules/catalog.js','../ui/package-metadata.js','../ui/parameter-schema.js','../ui/analysis-contract.js','../ui/module-contract.js','../ui/candidate-policy.js','../ui/i18n.js','settings-tabs.js');
+importScripts('site-model.js','../modules/catalog.js','../modules/default-filters.js','default-packages.js','module-runtime.js','../ui/package-metadata.js','../ui/parameter-schema.js','../ui/analysis-contract.js','../ui/module-contract.js','../ui/candidate-policy.js','../ui/i18n.js','settings-tabs.js');
 const settingsTabs=chrome.runtime.onConnect?globalThis.__KKGR_SETTINGS_TABS__(id=>chrome.storage.local.set({dev1SettingsTabId:id})):null;
 const Policy=globalThis.__KKGR_CANDIDATE_POLICY__;
 const BUNDLED_CATALOG=globalThis.__KKGR_RENDERER_CATALOG__;
 let RENDERER_IDS=BUNDLED_CATALOG.filter(e=>e.kind!=='filter').map(e=>e.id);
 const withDeadline=promise=>{let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('実行が10秒以内に応答しませんでした。対象タブを表示してから再試行してください。')),10000);})]).finally(()=>clearTimeout(timer));};
-async function packageState(){return (await chrome.storage.local.get('managedRenderers')).managedRenderers||{revision:0,items:[]};}
+const defaultPackages=globalThis.__KKGR_DEFAULT_PACKAGE_STORE__.create(chrome.storage.local,async file=>{const r=await fetch(chrome.runtime.getURL(file));if(!r.ok)throw Error('Packaged filter unavailable');return r.text();});
+async function packageState(){return defaultPackages.get();}
 const runtimeId=item=>item.registrationId||item.metadata.id;
-function catalogItems(ps){return [...BUNDLED_CATALOG.map(x=>({...x})),...ps.items.map(x=>({...x.metadata,id:runtimeId(x),packageId:x.metadata.id,installed:x.installed,updated:x.updated,checksum:x.checksum||null,filename:x.filename,module:true,managed:true}))];}
+function catalogItems(ps){return [...BUNDLED_CATALOG.filter(x=>x.kind!=='filter').map(x=>({...x})),...ps.items.map(x=>({...x.metadata,id:runtimeId(x),packageId:x.metadata.id,installed:x.installed,updated:x.updated,checksum:x.checksum||null,filename:x.filename,bundled:!!x.bundledFile,module:true,managed:true}))];}
 async function moduleLocale(){const choice=(await chrome.storage.local.get('uiLanguage')).uiLanguage;return globalThis.__KKGR_I18N__.resolve(choice,chrome.i18n?.getUILanguage?.()||globalThis.navigator?.language||'en');}
 async function rendererCatalog(){const ps=await packageState();const locale=await moduleLocale(),entries=catalogItems(ps).filter(x=>x.kind!=='filter').map(x=>({...x,name:globalThis.__KKGR_PACKAGE_METADATA__.translated(x,'name',locale)||x.name}));const names=(await chrome.storage.local.get('config')).config?.rendererDisplayNames||{};for(const entry of entries){entry.originalName=entry.name;entry.name=names[entry.id]||(entry.managed&&entries.filter(x=>x.managed&&x.packageId===entry.packageId).length>1?entry.name+' · v'+entry.version:entry.name);}RENDERER_IDS=entries.map(e=>e.id);return entries;}
 // Keep the copied source intact. Isolate each registration queue, then alias only
@@ -24,20 +25,20 @@ async function managePackageInternal(m){
  if(m.type==='ADD_PACKAGE'||m.type==='UPDATE_PACKAGE'){
   const d=globalThis.__KKGR_MODULE_CONTRACT__.validatePublic(m.metadata);
   if(typeof m.code!=='string'||new TextEncoder().encode(m.code).length>1024*1024)throw Error('Invalid package source');
-  if(BUNDLED_CATALOG.some(x=>x.id===d.id))throw Error('同じIDの組み込みパッケージがあります。今回は更新できません。');
+  if(BUNDLED_CATALOG.some(x=>x.kind!=='filter'&&x.id===d.id))throw Error('同じIDの組み込みパッケージがあります。今回は更新できません。');
   if(ps.items.some(x=>x.metadata.id===d.id&&x.metadata.version===d.version))throw Error('同じID・同じバージョンが登録されています。既存のものは保持しました。');
-  if(m.type==='ADD_PACKAGE'&&BUNDLED_CATALOG.length+ps.items.length>=Policy.registrationLimit)throw Error(globalThis.__KKGR_I18N__.t('packages.limitReached',{limit:Policy.registrationLimit}));
+  if(m.type==='ADD_PACKAGE'&&BUNDLED_CATALOG.filter(x=>x.kind!=='filter').length+ps.items.length>=Policy.registrationLimit)throw Error(globalThis.__KKGR_I18N__.t('packages.limitReached',{limit:Policy.registrationLimit}));
   const family=ps.items.filter(x=>x.metadata.id===d.id);
   const checksum=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(m.code)))).map(x=>x.toString(16).padStart(2,'0')).join('');
-  const now=Date.now(),installation=crypto.randomUUID();
+  const now=Date.now(),installation=crypto.randomUUID(),bundledFile=defaultPackages.trustedFile(d,checksum);
   if(m.type==='UPDATE_PACKAGE'){
    const index=ps.items.findIndex(x=>runtimeId(x)===m.packageId);if(index<0||ps.items[index].metadata.id!==d.id)throw Error('更新対象のパッケージIDが一致しません。');
-   const old=ps.items[index];if(d.kind==='filter')for(const stage of ['pre','post'])if(c.filterParameters?.[stage]?.[runtimeId(old)])globalThis.__KKGR_PARAMETERS__.values(d.parameters,c.filterParameters[stage][runtimeId(old)]);if(old.metadata.kind!==d.kind)throw Error("Package kind cannot change during update");ps.items[index]={...old,metadata:d,checksum,code:m.code,filename:String(m.filename||'module.js'),updated:now,installation};
+   const old=ps.items[index];if(d.kind==='filter')for(const stage of ['pre','post'])if(c.filterParameters?.[stage]?.[runtimeId(old)])globalThis.__KKGR_PARAMETERS__.values(d.parameters,c.filterParameters[stage][runtimeId(old)]);if(old.metadata.kind!==d.kind)throw Error("Package kind cannot change during update");ps.items[index]={...old,metadata:d,checksum,code:m.code,bundledFile,filename:String(m.filename||'module.js'),updated:now,installation};
   }else{
    if(family.length&&m.mode!=='additional')throw Error('同じIDの別バージョンがあります。追加か更新を選択してください。');
-   const occupied=new Set([...BUNDLED_CATALOG.map(x=>x.id),...ps.items.map(runtimeId)]);
+   const occupied=new Set([...BUNDLED_CATALOG.filter(x=>x.kind!=='filter').map(x=>x.id),...ps.items.map(runtimeId)]);
    const id=occupied.has(d.id)?'package.'+crypto.randomUUID():d.id;
-   ps.items.push({registrationId:id,metadata:d,checksum,code:m.code,filename:String(m.filename||'module.js'),installed:now,installation});
+   ps.items.push({registrationId:id,metadata:d,checksum,code:m.code,bundledFile,filename:String(m.filename||'module.js'),installed:now,installation});
    if(d.kind!=='filter')c.disabledRenderers=[...new Set([...c.disabledRenderers,id])];
   }
  }else if(m.type==='DELETE_PACKAGE'){
@@ -105,7 +106,7 @@ async function storeStatus(sender,status,error=null) {
 }
 async function hello(sender) {
   const execute=request=>withDeadline(chrome.scripting.executeScript(request));
-  let c=await config();
+  let c=await config(),moduleRuntime;
   if(sender.frameId!==0 || !await permitted(c,sender.url)) return {allowed:false};
   await execute({target:{tabId:sender.tab.id,documentIds:[sender.documentId]},
     world:'MAIN',files:['content/main.js']});
@@ -119,29 +120,22 @@ async function hello(sender) {
   providerInjection=providerInjection.catch(()=>{}).then(async()=>{
   c=await config();
   const loaded=await execute({target:{tabId:sender.tab.id,documentIds:[sender.documentId]},
-    world:'MAIN',func:()=>{if(globalThis.__KKGR_CORE__&&!globalThis.__KKGR_DEV4_1_4_READY__)throw Error('DEV4への更新後は読書タブを再読み込みしてください。');return !!globalThis.__KKGR_DEV4_1_4_READY__;}});
+    world:'MAIN',func:()=>{if((globalThis.__KKGR_CORE__||globalThis.__KKGR_PROCESSING__)&&globalThis.__KKGR_PROCESSING__?.moduleRuntimeVersion!==5){globalThis.__KKGR_PROCESSING__?.cancelAll();globalThis.__KKGR_CORE__?.stop();throw Error('拡張更新後は読書タブを再読み込みしてください。');}if(globalThis.__KKGR_CORE__&&!globalThis.__KKGR_DEV4_1_4_READY__)throw Error('DEV4への更新後は読書タブを再読み込みしてください。');return !!globalThis.__KKGR_CORE__&&!!globalThis.__KKGR_DEV4_1_4_READY__;}});
   if(!loaded[0]?.result) {
     const target={tabId:sender.tab.id,documentIds:[sender.documentId]};
     const runFiles=files=>withDeadline(chrome.scripting.executeScript({target,world:'MAIN',files}));
-    const ps=await packageState(),catalog=await rendererCatalog();
-    await execute({target,world:'MAIN',func:entries=>{globalThis.__KKGR_RENDERER_CATALOG__=Object.freeze(entries.map(Object.freeze));globalThis.__KKGR_EXTERNAL_RENDERERS__=[];globalThis.__KKGR_MODULES__=[];},args:[catalog]});
+    const catalog=await rendererCatalog();
+    await execute({target,world:'MAIN',func:entries=>{globalThis.__KKGR_PROCESSING__?.cancelAll();globalThis.__KKGR_MODULE_RUNTIME__=undefined;globalThis.__KKGR_RENDERER_CATALOG__=Object.freeze(entries.map(Object.freeze));globalThis.__KKGR_EXTERNAL_RENDERERS__=[];globalThis.__KKGR_MODULES__=[];globalThis.__KKGR_RENDERER_PROVIDERS__=[];},args:[catalog]});
     await runFiles(['ui/package-metadata.js','ui/parameter-schema.js','ui/analysis-contract.js','ui/module-contract.js']);
-    await runFiles(['ui/developer-diagnostics.js','gpu/processing-client.js','gpu/main-runtime.js','gpu/cpu-analysis.js','gpu/host.js','gpu/lohalo-jr.js','gpu/nohalo-jr.js','gpu/usm.js']);
+    await runFiles(['ui/developer-diagnostics.js','gpu/processing-client.js','gpu/main-runtime.js','gpu/cpu-analysis.js','gpu/host.js','gpu/lohalo-jr.js','gpu/nohalo-jr.js']);
     const diagnostics=[];
     for(const file of new Set(BUNDLED_CATALOG.filter(e=>e.kind!=='filter').map(e=>e.file))){
       try{await runFiles([file]);}catch(error){diagnostics.push({stage:'file',file,message:cleanError(error)});}
     }
-    const failed=[];
-    for(const item of ps.items.filter(x=>x.metadata.kind!=='filter')){try{if(!chrome.userScripts?.execute)throw Error('ユーザースクリプトを許可してください。');const result=await withDeadline(chrome.userScripts.execute({target,world:'MAIN',js:[{code:registrationCode(item)}]}));if(result.some(x=>x.error))throw Error(result.find(x=>x.error).error);}catch(error){failed.push(runtimeId(item));diagnostics.push({stage:'external',id:runtimeId(item),message:cleanError(error)});}}
-    await execute({target,world:'MAIN',func:(items,failed)=>{globalThis.__KKGR_MODULE_DIAGNOSTICS__=items;globalThis.__KKGR_RENDERER_CATALOG__=Object.freeze(globalThis.__KKGR_RENDERER_CATALOG__.filter(x=>!failed.includes(x.id)));},args:[diagnostics,failed]});
-    await execute({target,world:'MAIN',func:()=>{globalThis.__KKGR_EXTERNAL_RENDERERS__=(globalThis.__KKGR_MODULES__||[]).filter(d=>d.kind==='renderer'&&d.packageId);}});await runFiles(['modules/module-loader.js']);
-    await execute({target,world:'MAIN',func:()=>{const available=globalThis.__KKGR_RENDERER_PROVIDERS__||[];globalThis.__KKGR_RENDERER_CATALOG__=Object.freeze(globalThis.__KKGR_RENDERER_CATALOG__.filter(e=>{const ok=available.some(p=>p.id===e.id);if(!ok)globalThis.__KKGR_MODULE_DIAGNOSTICS__.push({stage:'missing',id:e.id,message:'登録失敗のためこのページでは使用できません'});return ok;}));}});
+    if(diagnostics.length){await chrome.storage.session.set({['modules:'+sender.tab.id]:{documentId:sender.documentId,items:diagnostics}});throw Error('GPU provider initialization failed: '+diagnostics.map(d=>d.file+': '+d.message).join('; '));}
+    moduleRuntime=await syncRuntimeModules(target,c);
     await runFiles(['content/providers-ready.js']);
-    await execute({target,world:'MAIN',func:items=>{globalThis.__KKGR_MODULE_STAMPS__=Object.fromEntries(items.filter(x=>globalThis.__KKGR_RENDERER_CATALOG__.some(e=>e.id===x.id)).map(x=>[x.id,x.stamp]));},args:[ps.items.map(x=>({id:runtimeId(x),stamp:x.installation||String(x.installed)}))]});
-    const moduleResult=await execute({target,world:'MAIN',func:()=>globalThis.__KKGR_MODULE_DIAGNOSTICS__||[]});
-    await chrome.storage.session.set({[`modules:${sender.tab.id}`]:{documentId:sender.documentId,items:moduleResult[0]?.result||[]}});
-    await syncRuntimeFilters(target);
-  }else{await syncRuntimeModules({tabId:sender.tab.id,documentIds:[sender.documentId]});}
+  }else{moduleRuntime=await syncRuntimeModules({tabId:sender.tab.id,documentIds:[sender.documentId]},c);}
   const effective=await execute({target:{tabId:sender.tab.id,documentIds:[sender.documentId]},
     world:'MAIN',func:settings=>{if(settings.renderer!=='browser'&&!globalThis.__KKGR_RENDERER_CATALOG__.some(e=>e.id===settings.renderer))settings.renderer='browser';Object.assign(globalThis.__KKGR_PLATFORM__.settings,settings);return settings.renderer;},
     args:[{developerMode:c.developerMode,diagnosticRecording:c.diagnosticRecording,diagnosticClearRevision:c.diagnosticClearRevision,hud:c.hud,renderer:c.renderer,hudMode:c.hudMode,hudPosition:c.hudPosition,uiLanguage:c.uiLanguage,disabledRenderers:c.disabledRenderers,quick:c.quick,rendererOrder:c.rendererOrder,filters:c.filters,kavitaAutoFullscreen:c.kavitaAutoFullscreen,kavitaPageTurnAnimation:c.kavitaPageTurnAnimation,processingMode:c.processingMode,outputFormat:c.outputFormat,blobBudgets:c.blobBudgets,decodedForward:c.decodedForward,decodedBack:c.decodedBack,processingTimeoutMs:c.processingTimeoutMs,processingRetryRevision:c.processingRetryRevision,filterParameters:c.filterParameters,filterCatalog:c.filterCatalog,revision:c.revision,filterCandidates:c.filterCandidates}]});
@@ -152,34 +146,88 @@ async function hello(sender) {
   await providerInjection;
   const key=`tab:${sender.tab.id}`,old=(await chrome.storage.session.get(key))[key];
   if(old?.documentId!==sender.documentId) await chrome.storage.session.set({[key]:{documentId:sender.documentId,status:null,diagnostic:null}});
-  return {allowed:true,enabled:c.enabled,developerMode:c.developerMode,diagnosticRecording:c.diagnosticRecording,diagnosticClearRevision:c.diagnosticClearRevision,hud:c.hud,renderer:c.renderer,hudMode:c.hudMode,hudPosition:c.hudPosition,uiLanguage:c.uiLanguage,disabledRenderers:c.disabledRenderers,quick:c.quick,rendererOrder:c.rendererOrder,filterCandidates:c.filterCandidates,filters:c.filters,kavitaAutoFullscreen:c.kavitaAutoFullscreen,kavitaPageTurnAnimation:c.kavitaPageTurnAnimation,processingMode:c.processingMode,outputFormat:c.outputFormat,blobBudgets:c.blobBudgets,decodedForward:c.decodedForward,decodedBack:c.decodedBack,processingTimeoutMs:c.processingTimeoutMs,processingRetryRevision:c.processingRetryRevision,filterParameters:c.filterParameters,filterCatalog:c.filterCatalog,revision:c.revision};
+  return {allowed:true,moduleRuntime,enabled:c.enabled,developerMode:c.developerMode,diagnosticRecording:c.diagnosticRecording,diagnosticClearRevision:c.diagnosticClearRevision,hud:c.hud,renderer:c.renderer,hudMode:c.hudMode,hudPosition:c.hudPosition,uiLanguage:c.uiLanguage,disabledRenderers:c.disabledRenderers,quick:c.quick,rendererOrder:c.rendererOrder,filterCandidates:c.filterCandidates,filters:c.filters,kavitaAutoFullscreen:c.kavitaAutoFullscreen,kavitaPageTurnAnimation:c.kavitaPageTurnAnimation,processingMode:c.processingMode,outputFormat:c.outputFormat,blobBudgets:c.blobBudgets,decodedForward:c.decodedForward,decodedBack:c.decodedBack,processingTimeoutMs:c.processingTimeoutMs,processingRetryRevision:c.processingRetryRevision,filterParameters:c.filterParameters,filterCatalog:c.filterCatalog,revision:c.revision};
 }
 // Use the HELLO-established document identity; never accept a popup-supplied identity.
-async function syncRuntimeModules(target){
- const ps=await packageState(),catalog=await rendererCatalog();
- const specs=ps.items.filter(x=>x.metadata.kind!=='filter').map(x=>({id:runtimeId(x),stamp:x.installation||String(x.installed)}));
+async function syncRuntimeModules(target,c=null){
+ c=c||await config();const ps=await packageState(),catalog=await rendererCatalog(),filters=await filterCatalog(),policy=globalThis.__KKGR_MODULE_RUNTIME_POLICY__;
+ const selection=policy.select(c,ps,(await chrome.tabs.get(target.tabId)).url);
+ const capability=selection.needsUserScripts?await userScriptCapability():{state:'available'};
+ const state=policy.state(selection,capability.state!=='unavailable');
+ if(!state.allowed)state.errors.push({message:'Allow user scripts to run imported GPU modules'});
+ const sources=ps.items.map(p=>({id:runtimeId(p),kind:p.metadata.kind,metadata:p.metadata,code:p.code,stamp:policy.stamp(p),bundled:!!p.bundledFile}));
  const run=req=>withDeadline(chrome.scripting.executeScript({target,world:'MAIN',...req}));
- const plan=(await run({func:specs=>{const core=globalThis.__KKGR_CORE__;if(!core?.syncRenderers)throw Error('更新後は一度読書ページを再読み込みしてください。');const stamps=globalThis.__KKGR_MODULE_STAMPS__||{};return specs.filter(x=>stamps[x.id]!==x.stamp||!core.ids().includes(x.id)).map(x=>x.id);},args:[specs]}))[0]?.result||[];
- await run({func:(catalog,plan)=>{const core=globalThis.__KKGR_CORE__;core.syncRenderers([],catalog.filter(x=>!plan.includes(x.id)));globalThis.__KKGR_RENDERER_CATALOG__=Object.freeze(catalog.map(Object.freeze));globalThis.__KKGR_EXTERNAL_RENDERERS__=[];globalThis.__KKGR_MODULES__=[];globalThis.__KKGR_MODULE_DIAGNOSTICS__=[];},args:[catalog,plan]});
- const failed=[];
- for(const item of ps.items.filter(x=>x.metadata.kind!=='filter'&&plan.includes(runtimeId(x)))){try{if(!chrome.userScripts?.execute)throw Error('ユーザースクリプトを許可してください。');const result=await withDeadline(chrome.userScripts.execute({target,world:'MAIN',js:[{code:registrationCode(item)}]}));if(result.some(x=>x.error))throw Error(result.find(x=>x.error).error);}catch(error){failed.push(runtimeId(item));}}
- await run({func:()=>{globalThis.__KKGR_EXTERNAL_RENDERERS__=(globalThis.__KKGR_MODULES__||[]).filter(d=>d.kind==='renderer'&&d.packageId);}});await run({files:['modules/module-loader.js']});
- await run({func:(catalog,specs,failed)=>{const core=globalThis.__KKGR_CORE__,pending=globalThis.__KKGR_RENDERER_PROVIDERS__||[];const good=catalog.filter(x=>!failed.includes(x.id));core.syncRenderers(pending,good);delete globalThis.__KKGR_RENDERER_PROVIDERS__;const ids=core.ids();globalThis.__KKGR_RENDERER_CATALOG__=Object.freeze(good.filter(x=>ids.includes(x.id)).map(Object.freeze));globalThis.__KKGR_MODULE_STAMPS__=Object.fromEntries(specs.filter(x=>ids.includes(x.id)).map(x=>[x.id,x.stamp]));},args:[catalog,specs,failed]});
- await syncRuntimeFilters(target);
+ const prepared=(await run({func:(state,catalog,sources)=>{
+  const previous=globalThis.__KKGR_MODULE_RUNTIME__,changed=previous?.key!==state.key||previous?.ready===false&&state.active&&state.allowed;
+  const old=globalThis.__KKGR_PACKAGE_SOURCES__||{},next=Object.fromEntries(sources.map(p=>[p.id,p]));
+  const replaced=new Set(Object.keys(old).filter(id=>old[id].stamp!==next[id]?.stamp));
+  if(changed){if(globalThis.__KKGR_PROCESSING__)globalThis.__KKGR_PROCESSING__.cancelAll();else globalThis.__KKGR_MAIN_PROCESSING__?.invalidate();globalThis.__KKGR_RENDERER_MODULES__={};globalThis.__KKGR_FILTER_MODULES__={...(globalThis.__KKGR_BUILTIN_FILTER_MODULES__||{})};globalThis.__KKGR_MODULES__=[];}
+  globalThis.__KKGR_MODULE_RUNTIME__=changed?state:previous;
+  globalThis.__KKGR_PACKAGE_SOURCES__=next;
+  globalThis.__KKGR_CORE__?.syncRenderers([],catalog.filter(d=>!replaced.has(d.id)));
+  globalThis.__KKGR_RENDERER_CATALOG__=Object.freeze(catalog.map(Object.freeze));
+  globalThis.__KKGR_EXTERNAL_RENDERERS__=catalog.filter(d=>d.managed);
+  globalThis.__KKGR_RENDERER_PROVIDERS__=globalThis.__KKGR_CORE__?[]:(globalThis.__KKGR_RENDERER_PROVIDERS__||[]);
+  return {changed};
+ },args:[state,catalog,sources]}))[0]?.result;
+ let changed=prepared?.changed!==false;
+ if(changed&&selection.active&&selection.mode==='speed'&&state.allowed){
+  for(const item of selection.selected){try{
+   if(item.bundledFile){
+    await run({files:[item.bundledFile]});
+    await run({func:(metadata,id,stamp)=>{
+     const queue=globalThis.__KKGR_MODULES__,d=queue?.pop();
+     if(!d||!globalThis.__KKGR_MODULE_CONTRACT__.equivalent(globalThis.__KKGR_MODULE_CONTRACT__.validate(d),metadata))throw Error('Packaged module metadata mismatch');
+     queue.push(Object.freeze({...d,id,packageId:metadata.id,stamp}));
+    },args:[item.metadata,runtimeId(item),policy.stamp(item)]});
+   }else{
+    const results=await withDeadline(chrome.userScripts.execute({target,world:'MAIN',js:[{code:registrationCode(item)}]}));
+    if(results.some(r=>r.error))throw Error(results.find(r=>r.error).error);
+    const registered=(await run({func:(id,stamp)=>globalThis.__KKGR_REGISTRATION_RECEIPTS__?.[id]?.ok===true&&(globalThis.__KKGR_MODULES__||[]).some(d=>d.id===id&&d.stamp===stamp),args:[runtimeId(item),policy.stamp(item)]}))[0]?.result;
+    if(!registered)throw Error('Module registration missing');
+   }
+  }catch(e){state.errors.push({id:runtimeId(item),message:cleanError(e)});}}
+ }
+ const latest=await config(),latestSelection=policy.select(latest,await packageState(),(await chrome.tabs.get(target.tabId)).url);
+ if(latestSelection.base!==selection.base){state.errors.push({message:'Module settings changed while preparing'});state.allowed=false;}
+ if(selection.needsUserScripts&&(await userScriptCapability()).state==='unavailable'){state.errors.push({message:'User-script access revoked'});state.allowed=false;}
+ if(state.errors.length)changed=true;
+ await run({func:(state,changed,filters)=>{
+  if(changed){
+   if(state.errors.length){globalThis.__KKGR_PROCESSING__?.cancelAll();globalThis.__KKGR_RENDERER_MODULES__={};globalThis.__KKGR_FILTER_MODULES__={...(globalThis.__KKGR_BUILTIN_FILTER_MODULES__||{})};globalThis.__KKGR_MODULES__=[];}
+   for(const d of globalThis.__KKGR_MODULES__||[]){if(d.kind==='renderer')globalThis.__KKGR_RENDERER_MODULES__[d.id]=d;else globalThis.__KKGR_FILTER_MODULES__[d.id]=d;}
+   globalThis.__KKGR_MODULES__=[];
+   state.ready=false;globalThis.__KKGR_MODULE_RUNTIME__=state;
+   globalThis.__KKGR_FILTER_SIGNATURE__=state.key;
+   globalThis.__KKGR_MODULE_DIAGNOSTICS__=state.errors.map(e=>({stage:'module',...e}));
+  }
+  globalThis.__KKGR_FILTER_CATALOG__=filters;
+ },args:[state,changed,filters]});
+ await run({files:['modules/module-loader.js']});
+ // Keep the same identity in the service worker and the reader for job authorization.
+ state.ready=state.active&&state.allowed&&state.errors.length===0;
+ const documentId=target.documentIds?.[0]||(await chrome.storage.session.get('tab:'+target.tabId))['tab:'+target.tabId]?.documentId;
+ await chrome.storage.session.set({['module-runtime:'+target.tabId]:{...state,documentId},['modules:'+target.tabId]:{documentId,items:state.errors.map(e=>({stage:'module',...e}))}});
+ // Authorize the document before exposing readiness to image jobs triggered by Core reconciliation.
+ await run({func:state=>{const current=globalThis.__KKGR_MODULE_RUNTIME__;if(current?.key===state.key&&current.allowed===state.allowed&&!current.errors?.length)current.ready=state.ready;},args:[state]});
+ await run({func:(catalog,changed)=>{
+  if(globalThis.__KKGR_CORE__){globalThis.__KKGR_CORE__.syncRenderers(globalThis.__KKGR_RENDERER_PROVIDERS__||[],catalog);delete globalThis.__KKGR_RENDERER_PROVIDERS__;if(changed)globalThis.__KKGR_CORE__.syncFilters();}
+ },args:[catalog,changed]});
+ return state;
 }
-async function syncRuntimeFilters(target){
- const ps=await packageState(),items=ps.items.filter(x=>x.metadata.kind==='filter'),catalog=await filterCatalog();
- const run=req=>withDeadline(chrome.scripting.executeScript({target,world:'MAIN',...req}));
- await run({func:packages=>{globalThis.__KKGR_PACKAGE_SOURCES__=Object.fromEntries(packages.map(p=>[p.id,p]));},args:[ps.items.map(x=>({id:runtimeId(x),name:x.metadata.name,kind:x.metadata.kind,metadata:x.metadata,code:x.code,stamp:x.installation||String(x.installed)}))]});
- const signature=JSON.stringify(items.map(x=>[runtimeId(x),x.installation||String(x.installed)]));
- const publishDiagnostics=async()=>{const items=(await run({func:()=>globalThis.__KKGR_MODULE_DIAGNOSTICS__||[]}))[0]?.result||[];const entry=(await chrome.storage.session.get(`tab:${target.tabId}`))[`tab:${target.tabId}`];const documentId=target.documentIds?.[0]||entry?.documentId;if(documentId)await chrome.storage.session.set({[`modules:${target.tabId}`]:{documentId,items}});};
- const changed=(await run({func:s=>globalThis.__KKGR_FILTER_SIGNATURE__!==s,args:[signature]}))[0]?.result;
- if(!changed){await run({func:catalog=>{globalThis.__KKGR_FILTER_CATALOG__=catalog.filter(d=>globalThis.__KKGR_FILTER_MODULES__?.[d.id]);},args:[catalog]});await publishDiagnostics();return;}
- await run({func:()=>{globalThis.__KKGR_MODULES__=Object.values(globalThis.__KKGR_BUILTIN_FILTER_MODULES__||{});globalThis.__KKGR_REGISTRATION_RECEIPTS__={};}});
- const failed=[],diagnostics=[];
- for(const item of items){try{if(!chrome.userScripts?.execute)throw Error('Allow user scripts');const r=await withDeadline(chrome.userScripts.execute({target,world:'MAIN',js:[{code:registrationCode(item)}]}));if(r.some(x=>x.error))throw Error(r.find(x=>x.error).error);const check=(await run({func:(id,stamp)=>{const receipt=globalThis.__KKGR_REGISTRATION_RECEIPTS__?.[id];const registered=(globalThis.__KKGR_MODULES__||[]).some(d=>d.id===id&&d.stamp===stamp);return {ok:receipt?.ok===true&&registered,message:receipt?.message||'Filter registration missing'};},args:[runtimeId(item),item.installation||String(item.installed)]}))[0]?.result;if(!check?.ok)throw Error(check?.message||'Filter registration missing');}catch(e){failed.push(runtimeId(item));diagnostics.push({stage:"filter",id:runtimeId(item),message:cleanError(e)});} }
- await run({func:(catalog,signature,failed,diagnostics)=>{globalThis.__KKGR_MODULE_DIAGNOSTICS__=[...(globalThis.__KKGR_MODULE_DIAGNOSTICS__||[]).filter(x=>x.stage!=="filter"),...diagnostics];const q=globalThis.__KKGR_MODULES__||[];globalThis.__KKGR_FILTER_MODULES__=Object.fromEntries(q.filter(d=>d.kind==='filter'&&!failed.includes(d.id)).map(d=>[d.id,d]));globalThis.__KKGR_FILTER_CATALOG__=catalog.filter(d=>globalThis.__KKGR_FILTER_MODULES__[d.id]);globalThis.__KKGR_FILTER_SIGNATURE__=failed.length?null:signature;globalThis.__KKGR_MODULES__=[];globalThis.__KKGR_CORE__?.syncFilters();},args:[catalog,signature,failed,diagnostics]});
- await publishDiagnostics();
+async function syncRuntimeFilters(target){return syncRuntimeModules(target);}
+async function authorizeModuleJob(m,sender){
+ const saved=await chrome.storage.local.get(['config','managedRenderers']),c={...DEFAULT,...saved.config};
+ const tab=await chrome.tabs.get(sender.tab.id);if(originOf(sender.url)!==originOf(tab.url)||!await permitted(c,tab.url))throw Error('Module site access revoked');
+ const runtime=(await chrome.storage.session.get('module-runtime:'+sender.tab.id))['module-runtime:'+sender.tab.id];
+ const policy=globalThis.__KKGR_MODULE_RUNTIME_POLICY__,selection=policy.select(c,saved.managedRenderers||{items:[]},tab.url);
+ const capability=selection.needsUserScripts?await userScriptCapability():{state:'available'},state=policy.state(selection,capability.state!=='unavailable');
+ if(!state.active||!state.allowed||runtime?.documentId!==sender.documentId||runtime.key!==m.runtimeKey||state.key!==m.runtimeKey||!runtime.ready)throw Error('Module runtime changed or user-script access revoked');
+ if(m.type==='AUTHORIZE_MODULE_JOB'){
+  if(m.mode!==selection.mode||!Array.isArray(m.packages)||m.packages.length>3)throw Error('Invalid module job');
+  for(const p of m.packages)if(!selection.selected.some(item=>runtimeId(item)===p.id&&policy.stamp(item)===p.stamp))throw Error('Module source has changed');
+ }
+ return {ok:true};
 }
 // One in-flight delivery per tab, with one replaceable latest request behind it.
 // A sleeping tab cannot accumulate one timeout for every setting edit.
@@ -350,7 +398,7 @@ async function ui(m) {
   else throw new Error('Unsupported command');
   c.revision++;await chrome.storage.local.set({config:c});
   // Saving is authoritative. Reader delivery never gates the mutation queue or UI.
-  notifyReaderPages(m.type==='SET_RENDERER_NAME').catch(()=>{});
+  notifyReaderPages(['SET_RENDERER_NAME','SET_ENABLED','SET_RENDERER','SET_RENDERERS','SET_CANDIDATES','SET_FILTER','SET_FILTER_CANDIDATES','SET_PROCESSING_MODE'].includes(m.type)).catch(()=>{});
   return ui({type:'GET_SAVED',targetTabId:m.targetTabId});
 }
 chrome.runtime.onMessage.addListener((m,sender,sendResponse)=>{
@@ -370,6 +418,7 @@ chrome.runtime.onMessage.addListener((m,sender,sendResponse)=>{
     if(!sender.tab || sender.frameId!==0) throw new Error('Unsupported sender');
     if(m.type==='PREPARE_EMBEDDED_SETTINGS')return prepareEmbeddedSettings(sender);
     if(m.type==='CLOSE_EMBEDDED_SETTINGS'){const key='embeddedSettings:'+sender.tab.id,context=(await chrome.storage.session.get(key))[key];if(context?.parentDocumentId===sender.documentId&&context.token===m.token)await chrome.storage.session.remove(key);return {ok:true};}
+    if(m.type==='AUTHORIZE_MODULE_JOB'||m.type==='CHECK_MODULE_ACCESS')return authorizeModuleJob(m,sender);
     if(m.type==='HELLO') return hello(sender);
     if(m.type==='OPEN_SETTINGS_FROM_READER'){if(!await permitted(await config(),sender.url))throw Error('Site permission missing');return openSettingsTab(sender.tab.id,(await config()).sites.length?'':'sites');}
     if(m.type==='SETTING') {
@@ -415,7 +464,7 @@ chrome.runtime.onInstalled.addListener(()=>{serial=serial.catch(()=>{}).then(rec
 chrome.runtime.onStartup.addListener(()=>{serial=serial.catch(()=>{}).then(reconcile);});
 chrome.permissions.onAdded.addListener(()=>{serial=serial.catch(()=>{}).then(finishPendingOrigins);});
 chrome.permissions.onRemoved.addListener(()=>{serial=serial.catch(()=>{}).then(reconcile);});
-chrome.tabs.onRemoved.addListener(id=>{chrome.storage.session.remove(`tab:${id}`);chrome.storage.session.remove('embeddedSettings:'+id);actionPaintSequence.delete(id);});
+chrome.tabs.onRemoved.addListener(id=>{chrome.storage.session.remove(`tab:${id}`);chrome.storage.session.remove('embeddedSettings:'+id);chrome.storage.session.remove('module-runtime:'+id);actionPaintSequence.delete(id);});
 chrome.tabs.onUpdated.addListener((id,change,tab)=>{
   // A late loading notification must not erase a new document's HELLO/status.
   // HELLO replaces the previous identity. GET actively probes before showing status.

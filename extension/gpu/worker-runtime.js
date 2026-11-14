@@ -2,13 +2,13 @@
  let host=null,modules={},signature=null,tail=Promise.resolve();
  const bundled=[...(globalThis.__KKGR_MODULES__||[])];let currentId;
  const phase=(id,stage,module,action)=>postMessage({id:currentId||id,type:'PHASE',stage,module:module?{id:module.id,packageId:module.packageId||module.id,name:module.name,version:module.version||null,implementationRevision:module.implementationRevision||null,stamp:module.stamp||null}:null,action});
- function reset(){host?.dispose();host=null;modules={};signature=null;}
+ function reset(){const previous=host;host=null;const instances=Object.values(modules);modules={};signature=null;for(const module of instances){try{previous?.disposeModule(module);}catch{/* Busy/lost contexts are finally released by host teardown. */}}previous?.dispose();}
  async function run(m){
   const {id,source,sw,sh,dw,dh,plan,parameters,timeoutMs,settingsRevision,mimeType}=m;const report=m.diagnostics?(event)=>postMessage({id,type:"DIAGNOSTIC",event}):null;
   globalThis.__KKGR_GPU_INSTANCE_ID__??=id;currentId=id;const start=performance.now(),workerQueueMs=m.receivedAt===undefined?0:start-m.receivedAt,initializationStarted=start;let initializationMs=0,pipelineMs=0;globalThis.__KKGR_PROCESSING_DEADLINE__=start+timeoutMs;
   try{
    const next=JSON.stringify([timeoutMs,plan,m.packages.map(p=>[p.id,p.stamp])]);
-   if(signature!==next){reset();globalThis.__KKGR_MODULES__=[...bundled];
+   if(signature!==next){reset();globalThis.__KKGR_MODULES__=bundled.filter(d=>!m.packages.some(p=>p.id===d.id));
     for(const p of m.packages){phase(id,p.kind==='filter'?(plan.pre===p.id?'pre':'post'):'renderer',{...p.metadata,id:p.id,packageId:p.metadata.id,stamp:p.stamp},'register');const before=globalThis.__KKGR_MODULES__;const old=before.length;new Function(p.code)();const queue=globalThis.__KKGR_MODULES__;if(queue.length!==old+1)throw Object.assign(Error('One descriptor per file'),{code:'INVALID_DESCRIPTOR'});const d=queue.at(-1),actual=globalThis.__KKGR_MODULE_CONTRACT__.validate(d);if(!globalThis.__KKGR_MODULE_CONTRACT__.equivalent(actual,p.metadata))throw Object.assign(Error('Package metadata mismatch'),{code:'INVALID_DESCRIPTOR'});queue[queue.length-1]={...d,packageId:d.id,id:p.id,stamp:p.stamp};}
     {host=globalThis.__KKGR_GPU__.create({processingTimeoutMs:timeoutMs,waitMs:timeoutMs,onStage:(stage,d,action)=>phase(id,stage,d,action)});
      for(const stage of ['pre','renderer','post']){const key=plan[stage];if(!key)continue;const d=globalThis.__KKGR_MODULES__.find(d=>d.id===key);if(!d)throw Error('Module unavailable: '+key);phase(id,stage,d,'prepare');modules[stage]=host.bind(d);}
