@@ -3398,8 +3398,10 @@
         const id=KavitaPages?.imageIdentity(source),page=id&&KavitaPages.peek(source)?.pages?.[id.number];
         const nw=page?.width||(s?.origUrl===source?s.nw:0),nh=page?.height||(s?.origUrl===source?s.nh:0);
         const t=nw&&nh?targetSize(img,nw,nh):null;
-        const result=t&&completedResult(`${source}|${t.w}x${t.h}|${rendererCacheKey(quality)}`,false);
-        if(result?.url&&result.decoded){url=result.url;bytes=result.item?.bytes||0;ready=true;}
+        // Keep using the prepared image as ownership moves into the visible cache.
+        // snapshot() borrows this exact URL until the slide is finished/disposed.
+        const result=t&&completedResult(`${source}|${t.w}x${t.h}|${rendererCacheKey(quality)}`);
+        if(result?.url){url=result.url;bytes=result.item?.bytes||0;ready=result.decoded;}
       }
       return {source,url,bytes,ready,signature};
     },

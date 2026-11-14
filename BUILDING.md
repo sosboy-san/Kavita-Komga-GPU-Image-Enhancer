@@ -44,6 +44,8 @@ Run the same SPA and live-control checks with `GPUIE_OMIT_EMPTY_SLOTS=1` to omit
 
 This fixture is not a replacement for installed-extension tests in Chrome or Android Edge. The historical usm-memory-browser.cjs comparison additionally requires its original pre-optimization source at ../phase3-active-fix/extension/gpu/usm.js; that source is not in this repository.
 
+`TEST_CHROME=/path/to/chromium node tests/kavita-motion-cache-browser.cjs` checks cached page-turn presentation across 24 combinations of layout, direction, fullscreen and Worker/speed execution. It uses the production Core, caches, motion layer and GPU color filter, with fixture HTTP and Worker transport. A delayed native Blob binding reproduces the handoff race. The checks require blue processed pixels throughout the slide, fixed borrowed URLs, no foreground reprocessing, and reference cleanup on OFF. The fullscreen RTL Worker spread also checks interruption by another turn. Set `GPUIE_MOTION_MODE`, `GPUIE_MOTION_LAYOUT`, `GPUIE_MOTION_DIRECTION` or `GPUIE_MOTION_FULL` to restrict a run. See [the fix notes](docs/Release-0.9.7-ja.md).
+
 ## Introduction page
 
 site/index.html is a buildless static page. Keep styles.css, script.js, assets/ and docs/ at the same relative locations. The relative structure supports GitHub Pages subdirectory hosting. Comparison images, quick-control icons, and illustrated package-import instructions are included. The guide screenshots reproduce the current UI implementation. No analytics or external font dependencies are used.
